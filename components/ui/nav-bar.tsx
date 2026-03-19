@@ -1,22 +1,52 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { Button } from "./ui/button";
+import { Button } from "./button";
 import Link from "next/link";
-import { Menu, Network, X } from "lucide-react";
+import { Bell, Menu, Network, Plus, Search, X } from "lucide-react";
+import { Input } from "./input";
+import { usePathname } from "next/navigation";
+import { SidebarTrigger } from "./sidebar";
 
 const FLOAT_IN = 80;
 const FLOAT_OUT = 40;
 const EASE = { duration: 0.5, ease: [0.4, 0, 0.2, 1] } as const;
 
 export function NavBar() {
+  const pathname = usePathname();
+  const isAppRoute = pathname.startsWith("/app");
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const appHeader = {
+    title: pathname.startsWith("/app/visualizer")
+      ? "Network Visualizer"
+      : pathname.startsWith("/app/history")
+        ? "Calculation History"
+        : pathname.startsWith("/app/settings")
+          ? "Settings"
+          : pathname.startsWith("/app/help")
+            ? "Help"
+            : "Subnet Calculator",
+    description: pathname.startsWith("/app/visualizer")
+      ? "Visualize address space allocation"
+      : pathname.startsWith("/app/history")
+        ? "Review previous subnet calculations"
+        : pathname.startsWith("/app/settings")
+          ? "Manage your app preferences"
+          : pathname.startsWith("/app/help")
+            ? "Get help using Subnify"
+            : "Create and review variable length subnet plans",
+  };
+
   useEffect(() => {
+    if (isAppRoute) {
+      return;
+    }
+
     const update = () => {
       const y = window.scrollY;
       setScrolled((prev) => {
@@ -28,7 +58,43 @@ export function NavBar() {
     update();
     window.addEventListener("scroll", update, { passive: true });
     return () => window.removeEventListener("scroll", update);
-  }, []);
+  }, [isAppRoute]);
+
+  if (isAppRoute) {
+    return (
+      <div className="sticky top-0 z-50 w-full">
+        <header className="w-full border-b border-border/50 bg-background/95 backdrop-blur-md">
+          <div className="flex h-16 w-full items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+            <div className="flex min-w-0 items-center gap-3">
+              <SidebarTrigger aria-label="Toggle sidebar" />
+              <div className="min-w-0">
+                <h1 className="truncate text-base font-semibold sm:text-lg">{appHeader.title}</h1>
+                <p className="hidden truncate text-sm text-muted-foreground lg:block">{appHeader.description}</p>
+              </div>
+            </div>
+
+            <div className="hidden items-center gap-3 sm:flex">
+              <div className="relative hidden lg:block">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input placeholder="Search..." className="w-64 border-border bg-secondary/50 pl-9" />
+              </div>
+              <Button variant="ghost" size="icon" className="relative">
+                <Bell className="h-5 w-5" />
+                <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-primary" />
+              </Button>
+              <Button className="gap-2" asChild>
+                <Link href="/app">
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden lg:inline">New Calculation</span>
+                </Link>
+              </Button>
+              <ThemeToggle />
+            </div>
+          </div>
+        </header>
+      </div>
+    );
+  }
 
   return (
     <div className="sticky top-0 z-50 w-full">
@@ -81,9 +147,6 @@ export function NavBar() {
           <Link href="#visualizer" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
             Visualizer
           </Link>
-          <Link href="#docs" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-            Docs
-          </Link>
         </nav>
 
         <div className="hidden items-center gap-3 md:flex">
@@ -116,9 +179,6 @@ export function NavBar() {
             </Link>
             <Link href="#visualizer" className="text-sm text-muted-foreground hover:text-foreground">
               Visualizer
-            </Link>
-            <Link href="#docs" className="text-sm text-muted-foreground hover:text-foreground">
-              Docs
             </Link>
             <div className="flex flex-col gap-2 pt-4">
               <Button variant="ghost" size="sm" className="w-full justify-start" asChild>

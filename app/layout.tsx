@@ -1,10 +1,10 @@
 import { Geist_Mono, Inter } from "next/font/google"
 
 import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
+import { ThemeProvider } from "@/components/ui/theme-provider"
 import { cn } from "@/lib/utils";
 import { Metadata } from "next";
-import { NavBar } from "@/components/nav-bar";
+import { LayoutShell } from "@/components/ui/layout-shell";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'})
 
@@ -31,8 +31,7 @@ export default function RootLayout({
     >
       <body>
         <ThemeProvider>
-          <NavBar />
-          {children}
+          <LayoutShell>{children}</LayoutShell>
         </ThemeProvider>
       </body>
     </html>
