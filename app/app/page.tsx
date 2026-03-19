@@ -7,6 +7,28 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Trash2, Calculator, Download, Copy, Check, RefreshCw } from "lucide-react"
+import { motion, type Variants } from "framer-motion"
+
+const pageVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      duration: 0.2,
+      ease: "easeOut",
+      staggerChildren: 0.06,
+    },
+  },
+}
+
+const sectionVariants: Variants = {
+  hidden: { opacity: 0, y: 6 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.18, ease: "easeOut" },
+  },
+}
 
 interface Subnet {
   id: number
@@ -151,11 +173,16 @@ export default function CalculatorPage() {
   const totalRequired = results.reduce((acc, r) => acc + r.requiredHosts, 0)
 
   return (
-    <>
-      <div className="flex-1 overflow-auto p-4 lg:p-6">
+    <motion.div
+      className="flex-1 overflow-auto p-4 lg:p-6"
+      variants={pageVariants}
+      initial="hidden"
+      animate="visible"
+    >
         <div className="mx-auto max-w-7xl space-y-6">
           {/* Input Section */}
-          <Card className="border-border">
+          <motion.div variants={sectionVariants}>
+            <Card className="border-border">
             <CardHeader className="flex flex-row items-center justify-between pb-4">
               <CardTitle className="text-base">Network Configuration</CardTitle>
               <Button variant="ghost" size="sm" onClick={resetForm} className="gap-1.5 text-muted-foreground">
@@ -247,11 +274,13 @@ export default function CalculatorPage() {
                 Calculate VLSM
               </Button>
             </CardContent>
-          </Card>
+            </Card>
+          </motion.div>
 
           {/* Results Section */}
           {results.length > 0 && (
-            <Card className="border-border">
+            <motion.div variants={sectionVariants}>
+              <Card className="border-border">
               <CardHeader className="flex flex-row items-center justify-between pb-4">
                 <div className="flex items-center gap-3">
                   <CardTitle className="text-base">Calculation Results</CardTitle>
@@ -313,7 +342,13 @@ export default function CalculatorPage() {
                   <TabsContent value="cards" className="mt-0">
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                       {results.map((result, index) => (
-                        <div key={index} className="rounded-lg border border-border bg-secondary/30 p-4">
+                        <motion.div
+                          key={index}
+                          initial={{ opacity: 0, y: 4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.14, ease: "easeOut", delay: index * 0.02 }}
+                          className="rounded-lg border border-border bg-secondary/30 p-4"
+                        >
                           <div className="mb-3 flex items-center justify-between">
                             <span className="font-medium">{result.name}</span>
                             <Badge variant="secondary">/{result.cidr}</Badge>
@@ -344,7 +379,7 @@ export default function CalculatorPage() {
                               <span className="font-semibold text-primary">{result.usableHosts}</span>
                             </div>
                           </div>
-                        </div>
+                        </motion.div>
                       ))}
                     </div>
                   </TabsContent>
@@ -370,10 +405,10 @@ export default function CalculatorPage() {
                   </div>
                 </div>
               </CardContent>
-            </Card>
+              </Card>
+            </motion.div>
           )}
         </div>
-      </div>
-    </>
+    </motion.div>
   )
 }

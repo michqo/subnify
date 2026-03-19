@@ -6,6 +6,28 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Trash2, ZoomIn, ZoomOut } from "lucide-react"
+import { motion, type Variants } from "framer-motion"
+
+const pageVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      duration: 0.2,
+      ease: "easeOut",
+      staggerChildren: 0.06,
+    },
+  },
+}
+
+const sectionVariants: Variants = {
+  hidden: { opacity: 0, y: 6 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.18, ease: "easeOut" },
+  },
+}
 
 interface Subnet {
   id: number
@@ -108,12 +130,17 @@ export default function VisualizerPage() {
   const utilizationPercent = ((allocatedAddresses / totalAddresses) * 100).toFixed(1)
 
   return (
-    <>
-      <div className="flex-1 overflow-auto p-4 lg:p-6">
+    <motion.div
+      className="flex-1 overflow-auto p-4 lg:p-6"
+      variants={pageVariants}
+      initial="hidden"
+      animate="visible"
+    >
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-6 lg:grid-cols-3">
             {/* Configuration Panel */}
-            <Card className="border-border lg:col-span-1">
+            <motion.div variants={sectionVariants} className="lg:col-span-1">
+              <Card className="border-border h-full">
               <CardHeader className="pb-4">
                 <CardTitle className="text-base">Configuration</CardTitle>
               </CardHeader>
@@ -152,8 +179,12 @@ export default function VisualizerPage() {
 
                   <div className="space-y-2">
                     {subnets.map((subnet, index) => (
-                      <div
+                      <motion.div
                         key={subnet.id}
+                        layout
+                        initial={{ opacity: 0, y: 3 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.12, ease: "easeOut" }}
                         className={`flex items-center gap-2 rounded-lg border p-2 transition-colors ${
                           selectedSubnet === subnet.id
                             ? "border-primary bg-primary/10"
@@ -193,7 +224,7 @@ export default function VisualizerPage() {
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
                 </div>
@@ -217,10 +248,12 @@ export default function VisualizerPage() {
                   </div>
                 </div>
               </CardContent>
-            </Card>
+              </Card>
+            </motion.div>
 
             {/* Visualization Panel */}
-            <Card className="border-border lg:col-span-2">
+            <motion.div variants={sectionVariants} className="lg:col-span-2">
+              <Card className="border-border">
               <CardHeader className="flex flex-row items-center justify-between pb-4">
                 <CardTitle className="text-base">Address Space Visualization</CardTitle>
                 <div className="flex items-center gap-2">
@@ -247,9 +280,12 @@ export default function VisualizerPage() {
                 {/* Linear Bar Visualization */}
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-muted-foreground">Linear Address Space</p>
-                  <div
+                  <motion.div
                     className="relative h-16 overflow-hidden rounded-lg border border-border bg-secondary/30"
                     style={{ minWidth: `${100 * zoom}%` }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.16, ease: "easeOut" }}
                   >
                     {results.map((result, index) => {
                       const leftPercent = (result.startOffset / totalAddresses) * 100
@@ -288,7 +324,7 @@ export default function VisualizerPage() {
                         <span className="text-xs text-muted-foreground">Unallocated</span>
                       </div>
                     )}
-                  </div>
+                  </motion.div>
                 </div>
 
                 {/* Subnet Hierarchy */}
@@ -350,10 +386,16 @@ export default function VisualizerPage() {
                 {/* Legend */}
                 <div className="flex flex-wrap items-center justify-center gap-4 rounded-lg bg-secondary/30 p-4">
                   {results.map((result, index) => (
-                    <div key={index} className="flex items-center gap-2">
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.1, ease: "easeOut", delay: index * 0.015 }}
+                      className="flex items-center gap-2"
+                    >
                       <div className={`h-3 w-3 rounded-full ${COLORS[index % COLORS.length].dot}`} />
                       <span className="text-sm">{result.name}</span>
-                    </div>
+                    </motion.div>
                   ))}
                   {allocatedAddresses < totalAddresses && (
                     <div className="flex items-center gap-2">
@@ -363,10 +405,10 @@ export default function VisualizerPage() {
                   )}
                 </div>
               </CardContent>
-            </Card>
+              </Card>
+            </motion.div>
           </div>
         </div>
-      </div>
-    </>
+    </motion.div>
   )
 }
