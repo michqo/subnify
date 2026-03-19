@@ -15,7 +15,7 @@ export function CTASection() {
       viewport={{ once: true, amount: 0.2 }}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <motion.div variants={itemVariants} className="relative overflow-hidden rounded-2xl border border-border bg-card p-8 sm:p-16">
+        <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-8 sm:p-16">
           {/* Background pattern */}
           <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-size-[32px_32px]" />
           
@@ -34,7 +34,7 @@ export function CTASection() {
               </Button>
             </motion.div>
           </div>
-        </motion.div>
+        </div>
       </div>
     </motion.section>
   )

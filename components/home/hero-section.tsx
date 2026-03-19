@@ -2,22 +2,33 @@
 
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Calculator, Network } from "lucide-react"
-import { motion } from "framer-motion"
-import { itemVariants, sectionVariants } from "./motion"
+import { motion, type Variants } from "framer-motion"
+import { itemVariants } from "./motion"
 import Link from "next/link"
+
+const HERO_EASE = [0.25, 0.1, 0.25, 1] as const
+
+const heroSectionVariants: Variants = {
+  hidden: { opacity: 0, y: 8 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.18,
+      ease: HERO_EASE,
+      staggerChildren: 0.06,
+    },
+  },
+}
 
 export function HeroSection() {
   return (
     <motion.section
       className="relative overflow-hidden"
-      variants={sectionVariants}
+      variants={heroSectionVariants}
       initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, amount: 0.2 }}
+      animate="visible"
     >
-      {/* Background grid pattern */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-size-[64px_64px]" />
-      
       <div className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8 lg:py-40">
         <div className="mx-auto max-w-3xl text-center">
           <motion.div variants={itemVariants} className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-secondary/50 px-4 py-1.5 text-sm text-muted-foreground">

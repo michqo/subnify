@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { Button } from "./button";
+import { Menu, Network, Plus, X } from "lucide-react";
 import Link from "next/link";
-import { Bell, Menu, Network, Plus, Search, X } from "lucide-react";
-import { Input } from "./input";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Button } from "./button";
 import { SidebarTrigger } from "./sidebar";
 
 const FLOAT_IN = 80;
@@ -62,7 +61,12 @@ export function NavBar() {
 
   if (isAppRoute) {
     return (
-      <div className="sticky top-0 z-50 w-full">
+      <motion.div
+        className="sticky top-0 z-50 w-full"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.14, ease: [0.25, 0.1, 0.25, 1] }}
+      >
         <header className="w-full border-b border-border/50 bg-background/95 backdrop-blur-md">
           <div className="flex h-16 w-full items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
@@ -74,14 +78,6 @@ export function NavBar() {
             </div>
 
             <div className="hidden items-center gap-3 sm:flex">
-              <div className="relative hidden lg:block">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input placeholder="Search..." className="w-64 border-border bg-secondary/50 pl-9" />
-              </div>
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-primary" />
-              </Button>
               <Button className="gap-2" asChild>
                 <Link href="/app">
                   <Plus className="h-4 w-4" />
@@ -92,7 +88,7 @@ export function NavBar() {
             </div>
           </div>
         </header>
-      </div>
+      </motion.div>
     );
   }
 

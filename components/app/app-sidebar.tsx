@@ -54,7 +54,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="h-16 justify-center border-b border-sidebar-border px-2">
         <div className="flex items-center gap-2">
-          <Link href="/app" className="flex min-w-0 items-center gap-2" onClick={handleNavClick}>
+          <Link href="/" className="flex min-w-0 items-center gap-2" onClick={handleNavClick}>
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary">
               <Network className="h-4 w-4 text-primary-foreground" />
             </div>
