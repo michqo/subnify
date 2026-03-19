@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useState } from "react"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
@@ -31,7 +32,9 @@ import {
   HelpCircle,
   LogOut,
   ChevronsUpDown,
+  LogIn,
 } from "lucide-react"
+import { AuthDialog } from "@/components/app/auth-dialog"
 
 const navigation = [
   { name: "Calculator", href: "/app", icon: Calculator },
@@ -41,6 +44,7 @@ const navigation = [
 
 export function AppSidebar() {
   const pathname = usePathname()
+  const [authDialogOpen, setAuthDialogOpen] = useState(false)
   const { state, isMobile, setOpenMobile } = useSidebar()
   const collapsed = state === "collapsed"
 
@@ -115,12 +119,18 @@ export function AppSidebar() {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => setAuthDialogOpen(true)}>
+              <LogIn className="h-4 w-4" />
+              Sign in
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive">
               <LogOut className="h-4 w-4" />
               Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        <AuthDialog open={authDialogOpen} onOpenChange={setAuthDialogOpen} />
       </SidebarFooter>
 
       <SidebarRail />
