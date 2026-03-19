@@ -39,7 +39,7 @@ import { AuthDialog } from "@/components/app/auth-dialog"
 const navigation = [
   { name: "Calculator", href: "/app", icon: Calculator },
   { name: "Visualizer", href: "/app/visualizer", icon: GitBranch },
-  { name: "History", href: "/app/history", icon: History },
+  { name: "History", href: "#", icon: History },
 ]
 
 export function AppSidebar() {
@@ -107,13 +107,13 @@ export function AppSidebar() {
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link href="/app/settings" onClick={handleNavClick}>
+              <Link href="#" onClick={handleNavClick}>
                 <Settings className="h-4 w-4" />
                 Settings
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/app/help" onClick={handleNavClick}>
+              <Link href="#" onClick={handleNavClick}>
                 <HelpCircle className="h-4 w-4" />
                 Help
               </Link>
