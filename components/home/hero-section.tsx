@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowRight, Calculator, Network } from "lucide-react"
 import { motion } from "framer-motion"
 import { itemVariants, sectionVariants } from "./motion"
+import Link from "next/link"
 
 export function HeroSection() {
   return (
@@ -37,15 +38,19 @@ export function HeroSection() {
           </motion.p>
           
           <motion.div variants={itemVariants} className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Button size="lg" className="gap-2">
-              <Calculator className="h-4 w-4" />
-              Start Calculating
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="lg" className="gap-2">
-              <Network className="h-4 w-4" />
-              View Demo
-            </Button>
+            <Link href="/app">
+              <Button size="lg" className="gap-2">
+                <Calculator className="h-4 w-4" />
+                Start Calculating
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+            <Link href="#calculator">
+              <Button variant="outline" size="lg" className="gap-2">
+                <Network className="h-4 w-4" />
+                View Demo
+              </Button>
+            </Link>
           </motion.div>
         </div>
 
