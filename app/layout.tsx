@@ -14,7 +14,7 @@ const fontMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'VLSM Calculator - Subnet Your Networks Efficiently',
+  title: 'Subnify - Subnet Your Networks Efficiently',
   description: 'Professional VLSM calculator for network engineers. Calculate variable length subnet masks and visualize your network topology with precision.'
 }
 
