@@ -1,0 +1,138 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
+import { Button } from "./ui/button";
+import Link from "next/link";
+import { Menu, Network, X } from "lucide-react";
+
+const FLOAT_IN = 80;
+const FLOAT_OUT = 40;
+const EASE = { duration: 0.5, ease: [0.4, 0, 0.2, 1] } as const;
+
+export function NavBar() {
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const update = () => {
+      const y = window.scrollY;
+      setScrolled((prev) => {
+        if (!prev && y > FLOAT_IN) return true;
+        if (prev && y < FLOAT_OUT) return false;
+        return prev;
+      });
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, []);
+
+  return (
+    <div className="sticky top-0 z-50 w-full">
+      <motion.div
+        initial={{ opacity: 0, y: -12, maxWidth: "100%", paddingLeft: 0, paddingRight: 0, paddingTop: 0 }}
+        animate={{
+          opacity: 1,
+          y: 0,
+          maxWidth: scrolled ? 900 : 10000,
+          paddingLeft: scrolled ? 16 : 0,
+          paddingRight: scrolled ? 16 : 0,
+          paddingTop: scrolled ? 8 : 0,
+        }}
+        transition={{
+          opacity: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1] },
+          y: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1] },
+          maxWidth: EASE,
+          paddingLeft: EASE,
+          paddingRight: EASE,
+          paddingTop: EASE,
+        }}
+        style={{ width: "100%" }}
+        className="mx-auto"
+      >
+        <motion.header
+          animate={{ borderRadius: scrolled ? 12 : 0 }}
+          transition={EASE}
+          className={cn(
+            "border-border/50 bg-background/80 backdrop-blur-md transition-[box-shadow,border] duration-500",
+            scrolled
+              ? "border shadow-lg shadow-black/8 dark:shadow-black/20"
+              : "border-b",
+          )}
+        >
+          <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <Link href="/" className="flex items-center gap-2">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+            <Network className="h-5 w-5 text-primary-foreground" />
+          </div>
+          <span className="text-lg font-semibold tracking-tight">Subnify</span>
+        </Link>
+
+        <nav className="hidden items-center gap-6 md:flex">
+          <Link href="#features" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+            Features
+          </Link>
+          <Link href="#calculator" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+            Calculator
+          </Link>
+          <Link href="#visualizer" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+            Visualizer
+          </Link>
+          <Link href="#docs" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+            Docs
+          </Link>
+        </nav>
+
+        <div className="hidden items-center gap-3 md:flex">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/login">Sign In</Link>
+          </Button>
+          <Button size="sm" asChild>
+            <Link href="/app">Get Started</Link>
+          </Button>
+          <ThemeToggle />
+        </div>
+
+        <button
+          className="md:hidden"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          aria-label="Toggle menu"
+        >
+          {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        </button>
+      </div>
+
+      {mobileMenuOpen && (
+        <div className="border-t border-border bg-background px-4 py-4 md:hidden">
+          <nav className="flex flex-col gap-4">
+            <Link href="#features" className="text-sm text-muted-foreground hover:text-foreground">
+              Features
+            </Link>
+            <Link href="#calculator" className="text-sm text-muted-foreground hover:text-foreground">
+              Calculator
+            </Link>
+            <Link href="#visualizer" className="text-sm text-muted-foreground hover:text-foreground">
+              Visualizer
+            </Link>
+            <Link href="#docs" className="text-sm text-muted-foreground hover:text-foreground">
+              Docs
+            </Link>
+            <div className="flex flex-col gap-2 pt-4">
+              <Button variant="ghost" size="sm" className="w-full justify-start" asChild>
+                <Link href="/login">Sign In</Link>
+              </Button>
+              <Button size="sm" className="w-full" asChild>
+                <Link href="/app">Get Started</Link>
+              </Button>
+            </div>
+          </nav>
+        </div>
+      )}
+        </motion.header>
+      </motion.div>
+    </div>
+  );
+}
