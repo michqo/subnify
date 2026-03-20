@@ -38,12 +38,42 @@ interface Subnet {
 }
 
 const COLORS = [
-  { bg: "bg-chart-1/40", border: "border-chart-1", dot: "bg-chart-1" },
-  { bg: "bg-chart-2/40", border: "border-chart-2", dot: "bg-chart-2" },
-  { bg: "bg-chart-3/40", border: "border-chart-3", dot: "bg-chart-3" },
-  { bg: "bg-chart-4/40", border: "border-chart-4", dot: "bg-chart-4" },
-  { bg: "bg-chart-5/40", border: "border-chart-5", dot: "bg-chart-5" },
-  { bg: "bg-primary/40", border: "border-primary", dot: "bg-primary" },
+  {
+    barBg: "bg-chart-1/60 dark:bg-chart-1/40",
+    cardBg: "bg-chart-1/25 dark:bg-chart-1/20",
+    border: "border-chart-1",
+    dot: "bg-chart-1",
+  },
+  {
+    barBg: "bg-chart-2/60 dark:bg-chart-2/40",
+    cardBg: "bg-chart-2/25 dark:bg-chart-2/20",
+    border: "border-chart-2",
+    dot: "bg-chart-2",
+  },
+  {
+    barBg: "bg-chart-3/60 dark:bg-chart-3/40",
+    cardBg: "bg-chart-3/25 dark:bg-chart-3/20",
+    border: "border-chart-3",
+    dot: "bg-chart-3",
+  },
+  {
+    barBg: "bg-chart-4/60 dark:bg-chart-4/40",
+    cardBg: "bg-chart-4/25 dark:bg-chart-4/20",
+    border: "border-chart-4",
+    dot: "bg-chart-4",
+  },
+  {
+    barBg: "bg-chart-5/60 dark:bg-chart-5/40",
+    cardBg: "bg-chart-5/25 dark:bg-chart-5/20",
+    border: "border-chart-5",
+    dot: "bg-chart-5",
+  },
+  {
+    barBg: "bg-primary/60 dark:bg-primary/40",
+    cardBg: "bg-primary/20 dark:bg-primary/15",
+    border: "border-primary",
+    dot: "bg-primary",
+  },
 ]
 
 export default function VisualizerPage() {
@@ -77,10 +107,7 @@ export default function VisualizerPage() {
   }
 
   const results = useMemo(() => {
-    return calculateVlsm(baseNetwork, subnets).map((allocation, index) => ({
-      ...allocation,
-      color: COLORS[index % COLORS.length].bg,
-    }))
+    return calculateVlsm(baseNetwork, subnets)
   }, [subnets, baseNetwork])
 
   const totalAddresses = totalAddressesFromCidr(baseCidr)
@@ -239,7 +266,7 @@ export default function VisualizerPage() {
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-muted-foreground">Linear Address Space</p>
                   <motion.div
-                    className="relative h-16 overflow-hidden rounded-lg border border-border bg-secondary/30"
+                    className="relative h-16 overflow-hidden rounded-lg border border-border bg-muted/50 dark:bg-secondary/30"
                     style={{ minWidth: `${100 * zoom}%` }}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -251,7 +278,7 @@ export default function VisualizerPage() {
                       return (
                         <div
                           key={index}
-                          className={`absolute top-0 h-full cursor-pointer border-r transition-all ${COLORS[index % COLORS.length].bg} ${COLORS[index % COLORS.length].border} ${
+                          className={`absolute top-0 h-full cursor-pointer border-r transition-all ${COLORS[index % COLORS.length].barBg} ${COLORS[index % COLORS.length].border} ${
                             selectedSubnet === subnets.find((s) => s.name === result.name)?.id
                               ? "ring-2 ring-primary ring-offset-1 ring-offset-background"
                               : ""
@@ -264,12 +291,12 @@ export default function VisualizerPage() {
                         >
                           {widthPercent > 10 ? (
                             <div className="flex h-full flex-col items-center justify-center p-1">
-                              <span className="truncate text-xs font-medium">{result.name}</span>
-                              <span className="text-xs text-muted-foreground">/{result.cidr}</span>
+                              <span className="truncate text-xs font-semibold text-white drop-shadow-sm">{result.name}</span>
+                              <span className="text-[11px] text-white/95 drop-shadow-sm">/{result.cidr}</span>
                             </div>
                           ) : widthPercent > 3 ? (
                             <div className="flex h-full items-center justify-center p-1">
-                              <span className="text-[10px] font-medium">/{result.cidr}</span>
+                              <span className="text-[10px] font-semibold text-white drop-shadow-sm">/{result.cidr}</span>
                             </div>
                           ) : null}
                         </div>
@@ -277,13 +304,13 @@ export default function VisualizerPage() {
                     })}
                     {allocatedAddresses < totalAddresses && (
                       <div
-                        className="absolute top-0 flex h-full items-center justify-center bg-muted/20"
+                        className="absolute top-0 flex h-full items-center justify-center bg-muted/65 dark:bg-muted/20"
                         style={{
                           left: `${(allocatedAddresses / totalAddresses) * 100}%`,
                           width: `${((totalAddresses - allocatedAddresses) / totalAddresses) * 100}%`,
                         }}
                       >
-                        <span className="text-xs text-muted-foreground">Unallocated</span>
+                        <span className="text-xs text-foreground/80">Unallocated</span>
                       </div>
                     )}
                   </motion.div>
@@ -320,7 +347,7 @@ export default function VisualizerPage() {
                             className={`flex cursor-pointer items-center gap-3 rounded-md border p-3 transition-all ${
                               isSelected
                                 ? `${COLORS[index % COLORS.length].border} ring-2 ring-primary`
-                                : `${COLORS[index % COLORS.length].border} ${COLORS[index % COLORS.length].bg} hover:ring-1 hover:ring-primary/50`
+                                : `${COLORS[index % COLORS.length].border} ${COLORS[index % COLORS.length].cardBg} hover:ring-1 hover:ring-primary/50`
                             }`}
                             onClick={() => {
                               if (subnet) setSelectedSubnet(subnet.id === selectedSubnet ? null : subnet.id)
