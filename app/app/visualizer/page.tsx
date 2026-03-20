@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Trash2, ZoomIn, ZoomOut } from "lucide-react"
 import { motion, type Variants } from "framer-motion"
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 
 const pageVariants: Variants = {
   hidden: { opacity: 0 },
@@ -145,89 +146,89 @@ export default function VisualizerPage() {
                 <CardTitle className="text-base">Configuration</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Base Network
-                  </label>
-                  <div className="flex gap-2">
-                    <Input
-                      value={baseNetwork}
-                      onChange={(e) => setBaseNetwork(e.target.value)}
-                      className="h-9 border-border bg-secondary/50 font-mono"
-                    />
-                    <div className="flex items-center gap-1">
-                      <span className="text-muted-foreground">/</span>
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel htmlFor="visualizer-base-network">Base Network</FieldLabel>
+                    <div className="flex gap-2">
                       <Input
+                        id="visualizer-base-network"
+                        value={baseNetwork}
+                        onChange={(e) => setBaseNetwork(e.target.value)}
+                        className="h-9 border-border bg-secondary/50 font-mono"
+                      />
+                      <Input
+                        id="visualizer-base-cidr"
                         value={baseCidr}
                         onChange={(e) => setBaseCidr(e.target.value)}
                         className="h-9 w-14 border-border bg-secondary/50 font-mono"
                       />
                     </div>
-                  </div>
-                </div>
+                    <FieldDescription>Network address and CIDR prefix.</FieldDescription>
+                  </Field>
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      Subnets
-                    </label>
-                    <Button variant="ghost" size="sm" onClick={addSubnet} className="h-7 gap-1 px-2 text-xs">
-                      <Plus className="h-3 w-3" />
-                      Add
-                    </Button>
-                  </div>
+                  <Field>
+                    <div className="flex items-center justify-between">
+                      <FieldLabel>Subnets</FieldLabel>
+                      <Button type="button" variant="ghost" size="sm" onClick={addSubnet} className="h-7 gap-1 px-2 text-xs">
+                        <Plus className="h-3 w-3" />
+                        Add
+                      </Button>
+                    </div>
 
-                  <div className="space-y-2">
-                    {subnets.map((subnet, index) => (
-                      <motion.div
-                        key={subnet.id}
-                        layout
-                        initial={{ opacity: 0, y: 3 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.12, ease: "easeOut" }}
-                        className={`flex items-center gap-2 rounded-lg border p-2 transition-colors ${
-                          selectedSubnet === subnet.id
-                            ? "border-primary bg-primary/10"
-                            : "border-border bg-secondary/30 hover:border-primary/50"
-                        }`}
-                        onClick={() => setSelectedSubnet(subnet.id === selectedSubnet ? null : subnet.id)}
-                      >
-                        <div className={`h-3 w-3 shrink-0 rounded-full ${COLORS[index % COLORS.length].dot}`} />
-                        <Input
-                          value={subnet.name}
-                          onChange={(e) => {
-                            e.stopPropagation()
-                            updateSubnet(subnet.id, "name", e.target.value)
-                          }}
-                          className="h-7 flex-1 border-transparent bg-transparent px-1 text-sm"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                        <Input
-                          type="number"
-                          value={subnet.hosts}
-                          onChange={(e) => {
-                            e.stopPropagation()
-                            updateSubnet(subnet.id, "hosts", e.target.value)
-                          }}
-                          className="h-7 w-16 border-transparent bg-transparent px-1 text-right font-mono text-sm"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            removeSubnet(subnet.id)
-                          }}
-                          disabled={subnets.length === 1}
-                          className="h-6 w-6 shrink-0"
+                    <div className="space-y-2">
+                      {subnets.map((subnet, index) => (
+                        <motion.div
+                          key={subnet.id}
+                          layout
+                          initial={{ opacity: 0, y: 3 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.12, ease: "easeOut" }}
+                          className={`flex items-center gap-2 rounded-lg border p-2 transition-colors ${
+                            selectedSubnet === subnet.id
+                              ? "border-primary bg-primary/10"
+                              : "border-border bg-secondary/30 hover:border-primary/50"
+                          }`}
+                          onClick={() => setSelectedSubnet(subnet.id === selectedSubnet ? null : subnet.id)}
                         >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
+                          <div className={`h-3 w-3 shrink-0 rounded-full ${COLORS[index % COLORS.length].dot}`} />
+                          <Input
+                            value={subnet.name}
+                            onChange={(e) => {
+                              e.stopPropagation()
+                              updateSubnet(subnet.id, "name", e.target.value)
+                            }}
+                            className="h-7 flex-1 border-transparent bg-transparent px-1 text-sm"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <Input
+                            type="number"
+                            value={subnet.hosts}
+                            onChange={(e) => {
+                              e.stopPropagation()
+                              updateSubnet(subnet.id, "hosts", e.target.value)
+                            }}
+                            className="h-7 w-16 border-transparent bg-transparent px-1 text-right font-mono text-sm"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              removeSubnet(subnet.id)
+                            }}
+                            disabled={subnets.length === 1}
+                            className="h-6 w-6 shrink-0"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </motion.div>
+                      ))}
+                    </div>
+                    <FieldDescription>Define subnet labels and required host counts.</FieldDescription>
+                  </Field>
+                </FieldGroup>
 
                 {/* Stats */}
                 <div className="space-y-3 rounded-lg border border-border bg-secondary/30 p-3">

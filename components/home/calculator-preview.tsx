@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Plus, Trash2, Calculator } from "lucide-react"
 import { motion } from "framer-motion"
 import { itemVariants, sectionVariants } from "./motion"
@@ -127,6 +128,17 @@ export function CalculatorPreview() {
     setResults(calculatedResults)
   }
 
+  const resetForm = () => {
+    setBaseNetwork("192.168.1.0")
+    setBaseCidr("24")
+    setSubnets([
+      { id: 1, name: "LAN A", hosts: 50 },
+      { id: 2, name: "LAN B", hosts: 25 },
+      { id: 3, name: "LAN C", hosts: 10 },
+    ])
+    setResults([])
+  }
+
   return (
     <motion.section
       id="calculator"
@@ -156,72 +168,93 @@ export function CalculatorPreview() {
               <CardDescription>Base network and per-subnet host requirements</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Base Network</label>
-                  <Input
-                    value={baseNetwork}
-                    onChange={(e) => setBaseNetwork(e.target.value)}
-                    placeholder="192.168.1.0"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">CIDR</label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">/</span>
-                    <Input
-                      value={baseCidr}
-                      onChange={(e) => setBaseCidr(e.target.value)}
-                      placeholder="24"
-                      className="w-20"
-                    />
+              <form
+                className="space-y-6"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  calculateVLSM()
+                }}
+                onReset={(e) => {
+                  e.preventDefault()
+                  resetForm()
+                }}
+              >
+                <FieldGroup>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field>
+                      <FieldLabel htmlFor="preview-base-network">Base Network</FieldLabel>
+                      <Input
+                        id="preview-base-network"
+                        value={baseNetwork}
+                        onChange={(e) => setBaseNetwork(e.target.value)}
+                        placeholder="192.168.1.0"
+                      />
+                      <FieldDescription>IPv4 network address.</FieldDescription>
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor="preview-base-cidr">CIDR</FieldLabel>
+                      <Input
+                        id="preview-base-cidr"
+                        value={baseCidr}
+                        onChange={(e) => setBaseCidr(e.target.value)}
+                        placeholder="24"
+                        className="w-20"
+                      />
+                      <FieldDescription>Prefix length (0-32).</FieldDescription>
+                    </Field>
                   </div>
-                </div>
-              </div>
 
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium">Subnets</label>
-                  <Button variant="outline" size="sm" onClick={addSubnet} className="gap-1">
-                    <Plus className="h-3 w-3" />
-                    Add
-                  </Button>
-                </div>
-
-                <div className="space-y-2">
-                  {subnets.map((subnet) => (
-                    <div key={subnet.id} className="flex items-center gap-2">
-                      <Input
-                        value={subnet.name}
-                        onChange={(e) => updateSubnet(subnet.id, "name", e.target.value)}
-                        placeholder="Subnet name"
-                        className="flex-1"
-                      />
-                      <Input
-                        type="number"
-                        value={subnet.hosts}
-                        onChange={(e) => updateSubnet(subnet.id, "hosts", e.target.value)}
-                        placeholder="Hosts"
-                        className="w-24"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeSubnet(subnet.id)}
-                        disabled={subnets.length === 1}
-                        className="shrink-0"
-                      >
-                        <Trash2 className="h-4 w-4 text-muted-foreground" />
+                  <Field>
+                    <div className="flex items-center justify-between">
+                      <FieldLabel>Subnets</FieldLabel>
+                      <Button type="button" variant="outline" size="sm" onClick={addSubnet} className="gap-1">
+                        <Plus className="h-3 w-3" />
+                        Add
                       </Button>
                     </div>
-                  ))}
-                </div>
-              </div>
+                    <div className="space-y-2">
+                      {subnets.map((subnet) => (
+                        <div key={subnet.id} className="flex items-center gap-2">
+                          <Input
+                            value={subnet.name}
+                            onChange={(e) => updateSubnet(subnet.id, "name", e.target.value)}
+                            placeholder="Subnet name"
+                            className="flex-1"
+                          />
+                          <Input
+                            type="number"
+                            value={subnet.hosts}
+                            onChange={(e) => updateSubnet(subnet.id, "hosts", e.target.value)}
+                            placeholder="Hosts"
+                            className="w-24"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeSubnet(subnet.id)}
+                            disabled={subnets.length === 1}
+                            className="shrink-0"
+                          >
+                            <Trash2 className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    <FieldDescription>Each row defines one subnet and required hosts.</FieldDescription>
+                  </Field>
 
-              <Button onClick={calculateVLSM} className="w-full gap-2">
-                <Calculator className="h-4 w-4" />
-                Calculate VLSM
-              </Button>
+                  <Field orientation="horizontal" className="justify-end">
+                    <Button type="reset" variant="outline">
+                      Reset
+                    </Button>
+                    <Button type="submit" className="gap-2">
+                      <Calculator className="h-4 w-4" />
+                      Calculate VLSM
+                    </Button>
+                  </Field>
+                </FieldGroup>
+              </form>
             </CardContent>
             </Card>
           </motion.div>
