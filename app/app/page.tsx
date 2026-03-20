@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Trash2, Calculator, Download, Copy, Check } from "lucide-react"
 import { motion, type Variants } from "framer-motion"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { calculateVlsm, totalAddressesFromCidr, type VlsmAllocation } from "@/lib/vlsm"
 
 const pageVariants: Variants = {
   hidden: { opacity: 0 },
@@ -37,17 +38,7 @@ interface Subnet {
   hosts: number
 }
 
-interface CalculatedSubnet {
-  name: string
-  networkAddress: string
-  cidr: number
-  subnetMask: string
-  firstHost: string
-  lastHost: string
-  broadcast: string
-  usableHosts: number
-  requiredHosts: number
-}
+type CalculatedSubnet = VlsmAllocation
 
 export default function CalculatorPage() {
   const [baseNetwork, setBaseNetwork] = useState("192.168.1.0")
@@ -59,6 +50,7 @@ export default function CalculatorPage() {
   ])
   const [results, setResults] = useState<CalculatedSubnet[]>([])
   const [copied, setCopied] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   const addSubnet = () => {
     const newId = Math.max(...subnets.map((s) => s.id), 0) + 1
@@ -79,73 +71,111 @@ export default function CalculatorPage() {
   }
 
   const calculateVLSM = () => {
-    const sortedSubnets = [...subnets].sort((a, b) => b.hosts - a.hosts)
-    const calculatedResults: CalculatedSubnet[] = []
+    setResults(calculateVlsm(baseNetwork, subnets))
+  }
 
-    const baseOctets = baseNetwork.split(".").map(Number)
-    let currentIp = (baseOctets[0] << 24) | (baseOctets[1] << 16) | (baseOctets[2] << 8) | baseOctets[3]
-
-    for (const subnet of sortedSubnets) {
-      const hostsNeeded = subnet.hosts + 2
-      const hostBits = Math.ceil(Math.log2(hostsNeeded))
-      const cidr = 32 - hostBits
-      const blockSize = Math.pow(2, hostBits)
-
-      const remainder = currentIp % blockSize
-      if (remainder !== 0) {
-        currentIp += blockSize - remainder
-      }
-
-      const networkAddress = [
-        (currentIp >> 24) & 255,
-        (currentIp >> 16) & 255,
-        (currentIp >> 8) & 255,
-        currentIp & 255,
-      ].join(".")
-
-      const broadcastIp = currentIp + blockSize - 1
-      const broadcast = [
-        (broadcastIp >> 24) & 255,
-        (broadcastIp >> 16) & 255,
-        (broadcastIp >> 8) & 255,
-        broadcastIp & 255,
-      ].join(".")
-
-      const firstHostIp = currentIp + 1
-      const firstHost = [
-        (firstHostIp >> 24) & 255,
-        (firstHostIp >> 16) & 255,
-        (firstHostIp >> 8) & 255,
-        firstHostIp & 255,
-      ].join(".")
-
-      const lastHostIp = broadcastIp - 1
-      const lastHost = [
-        (lastHostIp >> 24) & 255,
-        (lastHostIp >> 16) & 255,
-        (lastHostIp >> 8) & 255,
-        lastHostIp & 255,
-      ].join(".")
-
-      const mask = ~(Math.pow(2, 32 - cidr) - 1) >>> 0
-      const subnetMask = [(mask >> 24) & 255, (mask >> 16) & 255, (mask >> 8) & 255, mask & 255].join(".")
-
-      calculatedResults.push({
-        name: subnet.name,
-        networkAddress,
-        cidr,
-        subnetMask,
-        firstHost,
-        lastHost,
-        broadcast,
-        usableHosts: blockSize - 2,
-        requiredHosts: subnet.hosts,
-      })
-
-      currentIp += blockSize
+  const exportPdf = async () => {
+    if (results.length === 0 || exporting) {
+      return
     }
 
-    setResults(calculatedResults)
+    setExporting(true)
+    try {
+      const [{ jsPDF }, { default: autoTable }] = await Promise.all([import("jspdf"), import("jspdf-autotable")])
+
+      const document = new jsPDF({ unit: "pt", format: "a4" })
+      const createdAt = new Date().toLocaleString()
+
+      document.setFontSize(16)
+      document.text("Subnify VLSM Report", 40, 44)
+      document.setFontSize(10)
+      document.text(`Generated: ${createdAt}`, 40, 62)
+      document.text(`Base Network: ${baseNetwork}/${baseCidr}`, 40, 76)
+
+      autoTable(document, {
+        startY: 96,
+        head: [["Subnet", "Network", "CIDR", "Mask", "Host Range", "Broadcast", "Usable"]],
+        body: results.map((row) => [
+          row.name,
+          row.networkAddress,
+          `/${row.cidr}`,
+          row.subnetMask,
+          `${row.firstHost} - ${row.lastHost}`,
+          row.broadcast,
+          String(row.usableHosts),
+        ]),
+        styles: { fontSize: 8, cellPadding: 4 },
+        headStyles: { fillColor: [30, 41, 59] },
+      })
+
+      const tableEnd = (document as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 96
+      const pageHeight = document.internal.pageSize.getHeight()
+      if (tableEnd + 150 > pageHeight) {
+        document.addPage()
+      }
+
+      const chartStartY = tableEnd + 36 > pageHeight - 120 ? 56 : tableEnd + 36
+      if (chartStartY === 56) {
+        document.setFontSize(16)
+        document.text("Subnify VLSM Report (cont.)", 40, 40)
+      }
+
+      document.setFontSize(12)
+      document.text("Address Space Visualization", 40, chartStartY)
+
+      const totalAddresses = totalAddressesFromCidr(baseCidr)
+      const allocatedAddresses = results.reduce((sum, row) => sum + row.blockSize, 0)
+      const barX = 40
+      const barY = chartStartY + 16
+      const barWidth = 515
+      const barHeight = 24
+
+      document.setDrawColor(148, 163, 184)
+      document.setFillColor(248, 250, 252)
+      document.rect(barX, barY, barWidth, barHeight, "FD")
+
+      const palette: Array<[number, number, number]> = [
+        [59, 130, 246],
+        [16, 185, 129],
+        [245, 158, 11],
+        [168, 85, 247],
+        [236, 72, 153],
+        [14, 165, 233],
+      ]
+
+      results.forEach((row, index) => {
+        const left = barX + (row.startOffset / totalAddresses) * barWidth
+        const width = Math.max(1, (row.blockSize / totalAddresses) * barWidth)
+        const [red, green, blue] = palette[index % palette.length]
+        document.setFillColor(red, green, blue)
+        document.rect(left, barY, width, barHeight, "F")
+
+        if (width > 56) {
+          document.setTextColor(255, 255, 255)
+          document.setFontSize(8)
+          document.text(`${row.name} /${row.cidr}`, left + 3, barY + 15)
+        } else if (width > 24) {
+          document.setTextColor(255, 255, 255)
+          document.setFontSize(8)
+          document.text(`/${row.cidr}`, left + 3, barY + 15)
+        }
+      })
+
+      if (allocatedAddresses < totalAddresses) {
+        const left = barX + (allocatedAddresses / totalAddresses) * barWidth
+        const width = ((totalAddresses - allocatedAddresses) / totalAddresses) * barWidth
+        document.setFillColor(226, 232, 240)
+        document.rect(left, barY, width, barHeight, "F")
+      }
+
+      document.setTextColor(15, 23, 42)
+      document.setFontSize(9)
+      document.text(`Allocated: ${allocatedAddresses.toLocaleString()} / ${totalAddresses.toLocaleString()} addresses`, 40, barY + 44)
+
+      document.save(`subnify-vlsm-${Date.now()}.pdf`)
+    } finally {
+      setExporting(false)
+    }
   }
 
   const copyResults = () => {
@@ -303,9 +333,9 @@ export default function CalculatorPage() {
                     {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                     {copied ? "Copied" : "Copy"}
                   </Button>
-                  <Button variant="outline" size="sm" className="gap-1.5">
+                  <Button variant="outline" size="sm" className="gap-1.5" onClick={exportPdf} disabled={exporting}>
                     <Download className="h-3.5 w-3.5" />
-                    Export
+                    {exporting ? "Exporting..." : "Export"}
                   </Button>
                 </div>
               </CardHeader>

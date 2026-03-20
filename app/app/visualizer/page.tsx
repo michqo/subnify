@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Plus, Trash2, ZoomIn, ZoomOut } from "lucide-react"
 import { motion, type Variants } from "framer-motion"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { calculateVlsm, totalAddressesFromCidr } from "@/lib/vlsm"
 
 const pageVariants: Variants = {
   hidden: { opacity: 0 },
@@ -34,16 +35,6 @@ interface Subnet {
   id: number
   name: string
   hosts: number
-}
-
-interface CalculatedSubnet {
-  name: string
-  networkAddress: string
-  cidr: number
-  usableHosts: number
-  startOffset: number
-  blockSize: number
-  color: string
 }
 
 const COLORS = [
@@ -86,48 +77,13 @@ export default function VisualizerPage() {
   }
 
   const results = useMemo(() => {
-    const sortedSubnets = [...subnets].sort((a, b) => b.hosts - a.hosts)
-    const calculatedResults: CalculatedSubnet[] = []
-
-    const baseOctets = baseNetwork.split(".").map(Number)
-    const baseIp = (baseOctets[0] << 24) | (baseOctets[1] << 16) | (baseOctets[2] << 8) | baseOctets[3]
-    let currentIp = baseIp
-
-    sortedSubnets.forEach((subnet, index) => {
-      const hostsNeeded = subnet.hosts + 2
-      const hostBits = Math.ceil(Math.log2(hostsNeeded))
-      const cidr = 32 - hostBits
-      const blockSize = Math.pow(2, hostBits)
-
-      const remainder = currentIp % blockSize
-      if (remainder !== 0) {
-        currentIp += blockSize - remainder
-      }
-
-      const networkAddress = [
-        (currentIp >> 24) & 255,
-        (currentIp >> 16) & 255,
-        (currentIp >> 8) & 255,
-        currentIp & 255,
-      ].join(".")
-
-      calculatedResults.push({
-        name: subnet.name,
-        networkAddress,
-        cidr,
-        usableHosts: blockSize - 2,
-        startOffset: currentIp - baseIp,
-        blockSize,
-        color: COLORS[index % COLORS.length].bg,
-      })
-
-      currentIp += blockSize
-    })
-
-    return calculatedResults
+    return calculateVlsm(baseNetwork, subnets).map((allocation, index) => ({
+      ...allocation,
+      color: COLORS[index % COLORS.length].bg,
+    }))
   }, [subnets, baseNetwork])
 
-  const totalAddresses = Math.pow(2, 32 - parseInt(baseCidr))
+  const totalAddresses = totalAddressesFromCidr(baseCidr)
   const allocatedAddresses = results.reduce((acc, r) => acc + r.blockSize, 0)
   const utilizationPercent = ((allocatedAddresses / totalAddresses) * 100).toFixed(1)
 
