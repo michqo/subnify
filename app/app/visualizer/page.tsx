@@ -69,7 +69,8 @@ export default function VisualizerPage() {
 
   const addSubnet = () => {
     const newId = Math.max(...subnets.map((s) => s.id), 0) + 1
-    setSubnets([...subnets, { id: newId, name: `Subnet ${newId}`, hosts: 10 }])
+    const suffix = newId <= 26 ? String.fromCharCode(64 + newId) : `${newId}`
+    setSubnets([...subnets, { id: newId, name: `LAN ${suffix}`, hosts: 10 }])
   }
 
   const removeSubnet = (id: number) => {
