@@ -58,12 +58,25 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="h-16 justify-center border-b border-sidebar-border px-2">
         <div className="flex items-center gap-2">
-          <Link href="/" className="flex min-w-0 items-center gap-2" onClick={handleNavClick}>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary">
-              <Network className="h-4 w-4 text-primary-foreground" />
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary">
+            <Network className="h-4 w-4 text-primary-foreground" />
+          </div>
+          {!collapsed && (
+            <div className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+              <a
+                href="https://miqal.xyz"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground transition-colors hover:text-foreground"
+              >
+                miqal
+              </a>
+              <span className="text-muted-foreground">/</span>
+              <Link href="/" className="transition-colors hover:text-primary">
+                subnify
+              </Link>
             </div>
-            {!collapsed && <span className="truncate text-base font-semibold tracking-tight">Subnify</span>}
-          </Link>
+          )}
         </div>
       </SidebarHeader>
 
