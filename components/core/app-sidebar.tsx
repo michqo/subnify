@@ -34,7 +34,7 @@ import {
   ChevronsUpDown,
   LogIn,
 } from "lucide-react"
-import { AuthDialog } from "@/components/app/auth-dialog"
+import { AuthDialog } from "@/components/core/auth-dialog"
 
 const navigation = [
   { name: "Calculator", href: "/app", icon: Calculator },

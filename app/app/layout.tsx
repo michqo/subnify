@@ -1,6 +1,6 @@
 "use client"
 
-import { AppSidebar } from "@/components/app/app-sidebar"
+import { AppSidebar } from "@/components/core/app-sidebar"
 import { NavBar } from "@/components/ui/nav-bar"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { motion } from "framer-motion"
