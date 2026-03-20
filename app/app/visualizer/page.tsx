@@ -306,12 +306,16 @@ export default function VisualizerPage() {
                             if (subnet) setSelectedSubnet(subnet.id === selectedSubnet ? null : subnet.id)
                           }}
                         >
-                          {widthPercent > 8 && (
+                          {widthPercent > 10 ? (
                             <div className="flex h-full flex-col items-center justify-center p-1">
                               <span className="truncate text-xs font-medium">{result.name}</span>
                               <span className="text-xs text-muted-foreground">/{result.cidr}</span>
                             </div>
-                          )}
+                          ) : widthPercent > 3 ? (
+                            <div className="flex h-full items-center justify-center p-1">
+                              <span className="text-[10px] font-medium">/{result.cidr}</span>
+                            </div>
+                          ) : null}
                         </div>
                       )
                     })}
