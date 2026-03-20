@@ -3,7 +3,7 @@
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { Menu, Network, Plus, X } from "lucide-react";
+import { Menu, Network, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -77,15 +77,7 @@ export function NavBar() {
               </div>
             </div>
 
-            <div className="hidden items-center gap-3 sm:flex">
-              <Button className="gap-2" asChild>
-                <Link href="/app">
-                  <Plus className="h-4 w-4" />
-                  <span className="hidden lg:inline">New Calculation</span>
-                </Link>
-              </Button>
-              <ThemeToggle />
-            </div>
+            <ThemeToggle />
           </div>
         </header>
       </motion.div>
