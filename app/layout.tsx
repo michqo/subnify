@@ -14,8 +14,40 @@ const fontMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Subnify - Subnet Your Networks Efficiently',
-  description: 'Professional VLSM calculator for network engineers. Calculate variable length subnet masks and visualize your network topology with precision.'
+  metadataBase: new URL("https://miqal.xyz"),
+  title: {
+    default: "miqal / subnify",
+    template: "%s | miqal / subnify",
+  },
+  description:
+    "Subnify is a VLSM subnet calculator and network planning tool in the miqal ecosystem of connected apps.",
+  applicationName: "Subnify",
+  keywords: [
+    "Subnify",
+    "miqal",
+    "VLSM calculator",
+    "subnet calculator",
+    "CIDR planning",
+    "network visualizer",
+    "network engineering",
+  ],
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "miqal / subnify",
+    description:
+      "Plan and visualize subnet allocations with Subnify, part of the miqal ecosystem of connected tools.",
+    url: "https://miqal.xyz",
+    siteName: "miqal / subnify",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "miqal / subnify",
+    description:
+      "VLSM subnet planning and visualization, integrated into the miqal app ecosystem.",
+  },
 }
 
 export default function RootLayout({

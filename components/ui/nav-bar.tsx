@@ -126,12 +126,25 @@ export function NavBar() {
           )}
         >
           <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
             <Network className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span className="text-lg font-semibold tracking-tight">Subnify</span>
-        </Link>
+          <div className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+            <a
+              href="https://miqal.xyz"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground transition-colors hover:text-foreground"
+            >
+              miqal
+            </a>
+            <span className="text-muted-foreground">/</span>
+            <Link href="/" className="transition-colors hover:text-primary">
+              subnify
+            </Link>
+          </div>
+        </div>
 
         <nav className="hidden items-center gap-6 md:flex">
           <Link href="#features" className="text-sm text-muted-foreground transition-colors hover:text-foreground">

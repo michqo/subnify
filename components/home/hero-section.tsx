@@ -1,6 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { ArrowRight, Calculator, Network } from "lucide-react"
 import { motion, type Variants } from "framer-motion"
 import { itemVariants } from "./motion"
@@ -36,16 +37,17 @@ export function HeroSection() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
             </span>
-            Practical subnet planning tool
+            CIDR and VLSM subnet tooling
+            <Badge variant="outline" className="ml-1">Alpha</Badge>
           </motion.div>
           
           <motion.h1 variants={itemVariants} className="text-balance text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-            Subnet your networks{" "}
-            <span className="text-primary">with precision</span>
+            Calculate subnet allocations{" "}
+            <span className="bg-linear-to-r from-primary to-cyan-700 bg-clip-text text-transparent">with precision</span>
           </motion.h1>
           
           <motion.p variants={itemVariants} className="mx-auto mt-6 max-w-2xl text-pretty text-lg text-muted-foreground sm:text-xl">
-            Subnify helps you plan VLSM subnetting with clear calculations and visual network structure so you can allocate IP space with confidence.
+            Define a base network, set host requirements, and inspect generated subnet ranges and hierarchy.
           </motion.p>
           
           <motion.div variants={itemVariants} className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
@@ -68,10 +70,10 @@ export function HeroSection() {
         {/* Highlights */}
         <motion.div variants={itemVariants} className="mx-auto mt-20 grid max-w-4xl grid-cols-2 gap-8 sm:grid-cols-4">
           {[
-            { value: "No signup", label: "Quick start" },
-            { value: "Browser-based", label: "Works instantly" },
-            { value: "CIDR + VLSM", label: "Built for planning" },
-            { value: "Clear output", label: "Easy to share" },
+            { value: "CIDR + VLSM", label: "Calculation model" },
+            { value: "Subnet masks", label: "Derived per block" },
+            { value: "Host ranges", label: "Usable boundaries" },
+            { value: "Hierarchy view", label: "Allocation context" },
           ].map((stat) => (
             <motion.div key={stat.label} variants={itemVariants} className="text-center">
               <div className="text-lg font-bold text-primary sm:text-2xl">{stat.value}</div>

@@ -21,15 +21,15 @@ export function CTASection() {
           
           <div className="relative mx-auto max-w-2xl text-center">
             <motion.h2 variants={itemVariants} className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
-              Ready to simplify your{" "}
-              <span className="text-primary">network planning?</span>
+              Start a subnet
+              <span className="text-primary"> planning session</span>
             </motion.h2>
             <motion.p variants={itemVariants} className="mx-auto mt-4 max-w-xl text-pretty text-muted-foreground">
-              Use Subnify to plan your next subnet layout with a clean workflow for calculation and visualization.
+              Use Subnify to draft and review CIDR/VLSM allocations directly in the browser.
             </motion.p>
             <motion.div variants={itemVariants} className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Button size="lg" className="gap-2">
-                Get Started Free
+                Open Calculator
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </motion.div>

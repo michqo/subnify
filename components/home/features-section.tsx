@@ -9,32 +9,32 @@ const features = [
   {
     icon: Calculator,
     title: "VLSM Calculator",
-    description: "Input your base network and required subnets. Get subnet masks and allocations based on host requirements.",
+    description: "Allocates subnets from host requirements using a VLSM-first flow.",
   },
   {
     icon: Network,
     title: "Network Visualization",
-    description: "Interactive visual representation of your network topology. See how subnets relate to each other at a glance.",
+    description: "Displays how each block occupies the parent address space.",
   },
   {
     icon: Zap,
     title: "Instant Results",
-    description: "Results update directly in the interface as you work, without extra page reloads.",
+    description: "Runs calculations client-side for fast iteration while planning.",
   },
   {
     icon: Shield,
     title: "RFC Compliant",
-    description: "Designed around RFC 1918 private addressing and CIDR subnetting conventions.",
+    description: "Uses CIDR notation and RFC 1918 private addressing conventions.",
   },
   {
     icon: Download,
     title: "Export Options",
-    description: "Export your subnet calculations as CSV, JSON, or PDF. Share with your team or import into documentation.",
+    description: "Exports calculation output for documentation and review workflows.",
   },
   {
     icon: GitBranch,
     title: "Subnet Hierarchy",
-    description: "Visualize parent-child subnet relationships. Understand how your address space is divided hierarchically.",
+    description: "Shows parent-child relationships between generated subnet blocks.",
   },
 ]
 
@@ -52,10 +52,11 @@ export function FeaturesSection() {
         <motion.div variants={itemVariants} className="mx-auto max-w-2xl text-center">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-primary">Features</h2>
           <p className="mt-2 text-balance text-3xl font-bold tracking-tight sm:text-4xl">
-            Everything you need for subnet planning
+            Focused subnet toolset
           </p>
           <p className="mt-4 text-pretty text-muted-foreground">
-            Professional-grade tools designed for network engineers, IT administrators, and students learning IP subnetting.
+            Technical features for planning and validating IPv4 subnet layouts.
+            Designed to integrate with future tools in the miqal portfolio.
           </p>
         </motion.div>
 

@@ -18,10 +18,10 @@ export function VisualizerPreview() {
         <motion.div variants={itemVariants} className="mx-auto max-w-2xl text-center">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-primary">Visualizer</h2>
           <p className="mt-2 text-balance text-3xl font-bold tracking-tight sm:text-4xl">
-            See your network structure
+            Validate address distribution
           </p>
           <p className="mt-4 text-pretty text-muted-foreground">
-            Interactive visualization helps you understand how your IP address space is divided across subnets.
+            Inspect block usage, remaining capacity, and subnet hierarchy in one view.
           </p>
         </motion.div>
 
@@ -29,7 +29,7 @@ export function VisualizerPreview() {
           <Card className="border-border">
             <CardHeader>
               <CardTitle>Network Topology</CardTitle>
-              <CardDescription>Visual representation of subnet allocation within 192.168.1.0/24</CardDescription>
+              <CardDescription>Reference allocation for 192.168.1.0/24</CardDescription>
             </CardHeader>
             <CardContent className="space-y-8">
               {/* Address Space Bar */}

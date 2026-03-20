@@ -140,10 +140,10 @@ export function CalculatorPreview() {
         <motion.div variants={itemVariants} className="mx-auto max-w-2xl text-center">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-primary">Calculator</h2>
           <p className="mt-2 text-balance text-3xl font-bold tracking-tight sm:text-4xl">
-            Try it yourself
+            Build an allocation plan
           </p>
           <p className="mt-4 text-pretty text-muted-foreground">
-            Enter your base network and define your subnet requirements. Our calculator handles the rest.
+            Input a base CIDR block and required hosts per subnet.
           </p>
         </motion.div>
 
@@ -153,7 +153,7 @@ export function CalculatorPreview() {
             <Card className="border-border">
             <CardHeader>
               <CardTitle>Network Configuration</CardTitle>
-              <CardDescription>Define your base network and subnet requirements</CardDescription>
+              <CardDescription>Base network and per-subnet host requirements</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid gap-4 sm:grid-cols-2">
@@ -231,12 +231,12 @@ export function CalculatorPreview() {
             <Card className="border-border">
             <CardHeader>
               <CardTitle>Calculation Results</CardTitle>
-              <CardDescription>Optimized subnet allocation based on your requirements</CardDescription>
+              <CardDescription>Generated network, mask, range, and usable host data</CardDescription>
             </CardHeader>
             <CardContent>
               {results.length === 0 ? (
                 <div className="flex h-64 items-center justify-center rounded-lg border border-dashed border-border">
-                  <p className="text-sm text-muted-foreground">Results will appear here after calculation</p>
+                  <p className="text-sm text-muted-foreground">Execute a calculation to populate this table</p>
                 </div>
               ) : (
                 <div className="space-y-4">
