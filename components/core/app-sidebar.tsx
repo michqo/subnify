@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
@@ -34,19 +33,21 @@ import {
   ChevronsUpDown,
   LogIn,
 } from "lucide-react"
-import { AuthDialog } from "@/components/core/auth-dialog"
+import { useAuth } from "@/components/core/auth-provider"
 
 const navigation = [
   { name: "Calculator", href: "/app", icon: Calculator },
   { name: "Visualizer", href: "/app/visualizer", icon: GitBranch },
-  { name: "History", href: "#", icon: History },
+  { name: "History", href: "/app/history", icon: History },
 ]
 
 export function AppSidebar() {
   const pathname = usePathname()
-  const [authDialogOpen, setAuthDialogOpen] = useState(false)
   const { state, isMobile, setOpenMobile } = useSidebar()
+  const { user, isAuthenticated, openAuthDialog, signOut } = useAuth()
   const collapsed = state === "collapsed"
+  const accountLabel = user?.email ?? "Guest"
+  const accountInitials = user?.email?.[0]?.toUpperCase() ?? "G"
 
   const handleNavClick = () => {
     if (isMobile) {
@@ -103,13 +104,13 @@ export function AppSidebar() {
               className="h-auto w-full justify-start gap-2 rounded-md px-1.5 py-1.5"
             >
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-medium">
-                JD
+                {accountInitials}
               </div>
               {!collapsed && (
                 <>
                   <div className="min-w-0 flex-1 text-left">
-                    <p className="truncate text-sm font-medium">John Doe</p>
-                    <p className="truncate text-xs text-muted-foreground">john@example.com</p>
+                    <p className="truncate text-sm font-medium">{isAuthenticated ? "Signed in" : "Guest"}</p>
+                    <p className="truncate text-xs text-muted-foreground">{accountLabel}</p>
                   </div>
                   <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
                 </>
@@ -120,30 +121,31 @@ export function AppSidebar() {
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link href="#" onClick={handleNavClick}>
+              <Link href="/app/settings" onClick={handleNavClick}>
                 <Settings className="h-4 w-4" />
                 Settings
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="#" onClick={handleNavClick}>
+              <Link href="/app/help" onClick={handleNavClick}>
                 <HelpCircle className="h-4 w-4" />
                 Help
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => setAuthDialogOpen(true)}>
-              <LogIn className="h-4 w-4" />
-              Sign in
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive">
-              <LogOut className="h-4 w-4" />
-              Sign out
-            </DropdownMenuItem>
+            {isAuthenticated ? (
+              <DropdownMenuItem variant="destructive" onSelect={() => void signOut()}>
+                <LogOut className="h-4 w-4" />
+                Sign out
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem onSelect={() => openAuthDialog(pathname)}>
+                <LogIn className="h-4 w-4" />
+                Sign in
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
-        <AuthDialog open={authDialogOpen} onOpenChange={setAuthDialogOpen} />
       </SidebarFooter>
 
       <SidebarRail />

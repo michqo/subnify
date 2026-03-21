@@ -8,26 +8,54 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
+import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 
 type AuthDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onAuthenticated?: () => void
 }
 
-export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
+export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogProps) {
+  const supabase = createSupabaseBrowserClient()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleEmailLogin = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleEmailLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setIsLoading(true)
+    setError(null)
 
-    setTimeout(() => {
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (signInError) {
+      setError(signInError.message)
       setIsLoading(false)
-      onOpenChange(false)
-    }, 800)
+      return
+    }
+
+    setIsLoading(false)
+    onAuthenticated?.()
+  }
+
+  const handleOAuthLogin = async (provider: "google" | "github") => {
+    setError(null)
+    const { error: signInError } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: typeof window !== "undefined" ? window.location.href : undefined,
+      },
+    })
+
+    if (signInError) {
+      setError(signInError.message)
+    }
   }
 
   return (
@@ -49,6 +77,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
               <Button
                 variant="outline"
                 className="h-11 w-full justify-start gap-3 border-border bg-secondary/50 text-foreground hover:bg-secondary"
+                onClick={() => handleOAuthLogin("google")}
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24">
                   <path
@@ -74,6 +103,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
               <Button
                 variant="outline"
                 className="h-11 w-full justify-start gap-3 border-border bg-secondary/50 text-foreground hover:bg-secondary"
+                onClick={() => handleOAuthLogin("github")}
               >
                 <Github className="h-5 w-5" />
                 Continue with GitHub
@@ -139,6 +169,8 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
               <Button type="submit" className="h-11 w-full" disabled={isLoading}>
                 {isLoading ? "Signing in..." : "Sign in"}
               </Button>
+
+              {error && <p className="text-sm text-destructive">{error}</p>}
             </form>
 
             <p className="mt-6 text-center text-sm text-muted-foreground">

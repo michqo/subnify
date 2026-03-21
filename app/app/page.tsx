@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,7 +9,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Trash2, Calculator, Download, Copy, Check } from "lucide-react"
 import { motion, type Variants } from "framer-motion"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { useRouter, useSearchParams } from "next/navigation"
+
 import { calculateVlsm, totalAddressesFromCidr, type VlsmAllocation } from "@/lib/vlsm"
+import { createSupabaseBrowserClient } from "@/lib/supabase/client"
+import { useAuth } from "@/components/core/auth-provider"
+import { parseSubnetInputArray, parseVlsmAllocations, type CalculationInsert } from "@/lib/history"
 
 const pageVariants: Variants = {
   hidden: { opacity: 0 },
@@ -41,6 +46,11 @@ interface Subnet {
 type CalculatedSubnet = VlsmAllocation
 
 export default function CalculatorPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const supabase = useMemo(() => createSupabaseBrowserClient(), [])
+  const { isAuthenticated, isAuthLoading, user } = useAuth()
+
   const [baseNetwork, setBaseNetwork] = useState("192.168.1.0")
   const [baseCidr, setBaseCidr] = useState("24")
   const [subnets, setSubnets] = useState<Subnet[]>([
@@ -51,6 +61,9 @@ export default function CalculatorPage() {
   const [results, setResults] = useState<CalculatedSubnet[]>([])
   const [copied, setCopied] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [restoreMessage, setRestoreMessage] = useState<string | null>(null)
+  const [saveMessage, setSaveMessage] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const addSubnet = () => {
     const newId = Math.max(...subnets.map((s) => s.id), 0) + 1
@@ -70,9 +83,104 @@ export default function CalculatorPage() {
     )
   }
 
-  const calculateVLSM = () => {
-    setResults(calculateVlsm(baseNetwork, subnets))
+  const saveCalculation = async (calculatedResults: CalculatedSubnet[]) => {
+    if (isAuthLoading) {
+      return
+    }
+
+    if (!isAuthenticated || !user) {
+      return
+    }
+
+    const totalRequiredHosts = calculatedResults.reduce((sum, subnet) => sum + subnet.requiredHosts, 0)
+    const totalUsableHosts = calculatedResults.reduce((sum, subnet) => sum + subnet.usableHosts, 0)
+    const payload: CalculationInsert = {
+      title: `${baseNetwork}/${baseCidr} (${subnets.length} subnets)`,
+      base_network: baseNetwork,
+      base_cidr: Number(baseCidr) || 0,
+      input_subnets: subnets.map(({ name, hosts }) => ({ name, hosts })),
+      result_subnets: calculatedResults,
+      total_required_hosts: totalRequiredHosts,
+      total_usable_hosts: totalUsableHosts,
+    }
+
+    const { error } = await supabase.from("calculations").insert({
+      ...payload,
+      user_id: user.id,
+    })
+
+    if (error) {
+      setSaveError(`Save failed: ${error.message}`)
+      setSaveMessage(null)
+      return
+    }
+
+    setSaveError(null)
+    setSaveMessage("Calculation saved to history.")
   }
+
+  const calculateVLSM = () => {
+    setSaveMessage(null)
+    setSaveError(null)
+    const calculatedResults = calculateVlsm(baseNetwork, subnets)
+    setResults(calculatedResults)
+    void saveCalculation(calculatedResults)
+  }
+
+  useEffect(() => {
+    const historyId = searchParams.get("history")
+    if (!historyId || !isAuthenticated) {
+      return
+    }
+
+    let ignore = false
+    const restoreFromHistory = async () => {
+      const { data, error } = await supabase
+        .from("calculations")
+        .select("base_network,base_cidr,input_subnets,result_subnets")
+        .eq("id", historyId)
+        .single()
+
+      if (ignore) {
+        return
+      }
+
+      if (error || !data) {
+        setRestoreMessage("Could not restore that history item.")
+        return
+      }
+
+      const inputSubnets = parseSubnetInputArray(data.input_subnets)
+      const restoredSubnets = inputSubnets.map((subnet, index) => ({
+        id: index + 1,
+        name: subnet.name ?? `LAN ${String.fromCharCode(65 + (index % 26))}`,
+        hosts: subnet.hosts,
+      }))
+
+      setBaseNetwork(String(data.base_network ?? "192.168.1.0"))
+      setBaseCidr(String(data.base_cidr ?? "24"))
+
+      if (restoredSubnets.length > 0) {
+        setSubnets(restoredSubnets)
+      }
+
+      const restoredResults = parseVlsmAllocations(data.result_subnets)
+
+      if (restoredResults.length > 0) {
+        setResults(restoredResults)
+      } else {
+        setResults(calculateVlsm(String(data.base_network ?? "192.168.1.0"), restoredSubnets))
+      }
+
+      setRestoreMessage("Restored calculation from history.")
+      router.replace("/app", { scroll: false })
+    }
+
+    void restoreFromHistory()
+    return () => {
+      ignore = true
+    }
+  }, [isAuthenticated, router, searchParams, supabase])
 
   const exportPdf = async () => {
     if (results.length === 0 || exporting) {
@@ -219,6 +327,9 @@ export default function CalculatorPage() {
               <CardTitle className="text-base">Network Configuration</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
+              {restoreMessage && <p className="text-sm text-muted-foreground">{restoreMessage}</p>}
+              {saveMessage && <p className="text-sm text-muted-foreground">{saveMessage}</p>}
+              {saveError && <p className="text-sm text-destructive">{saveError}</p>}
               <form
                 className="space-y-6"
                 onSubmit={(e) => {

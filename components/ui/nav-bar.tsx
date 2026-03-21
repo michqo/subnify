@@ -1,24 +1,34 @@
-"use client";
+"use client"
 
-import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
-import { Menu, Network, X } from "lucide-react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { Button } from "./button";
-import { SidebarTrigger } from "./sidebar";
+import { ThemeToggle } from "@/components/ui/theme-toggle"
+import { useAuth } from "@/components/core/auth-provider"
+import { cn } from "@/lib/utils"
+import { motion } from "framer-motion"
+import { CircleUserRound, LogOut, Menu, Network, X } from "lucide-react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { useEffect, useState } from "react"
+import { Button } from "./button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./dropdown-menu"
+import { SidebarTrigger } from "./sidebar"
 
-const FLOAT_IN = 80;
-const FLOAT_OUT = 40;
-const EASE = { duration: 0.5, ease: [0.4, 0, 0.2, 1] } as const;
+const FLOAT_IN = 80
+const FLOAT_OUT = 40
+const EASE = { duration: 0.5, ease: [0.4, 0, 0.2, 1] } as const
 
 export function NavBar() {
-  const pathname = usePathname();
-  const isAppRoute = pathname.startsWith("/app");
-  const [scrolled, setScrolled] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const pathname = usePathname()
+  const isAppRoute = pathname.startsWith("/app")
+  const [scrolled, setScrolled] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { openAuthDialog, isAuthenticated, isAuthLoading, signOut, user } = useAuth()
 
   const appHeader = {
     title: pathname.startsWith("/app/visualizer")
@@ -39,25 +49,26 @@ export function NavBar() {
           : pathname.startsWith("/app/help")
             ? "Get help using Subnify"
             : "Create and review variable length subnet plans",
-  };
+  }
 
   useEffect(() => {
     if (isAppRoute) {
-      return;
+      return
     }
 
     const update = () => {
-      const y = window.scrollY;
+      const y = window.scrollY
       setScrolled((prev) => {
-        if (!prev && y > FLOAT_IN) return true;
-        if (prev && y < FLOAT_OUT) return false;
-        return prev;
-      });
-    };
-    update();
-    window.addEventListener("scroll", update, { passive: true });
-    return () => window.removeEventListener("scroll", update);
-  }, [isAppRoute]);
+        if (!prev && y > FLOAT_IN) return true
+        if (prev && y < FLOAT_OUT) return false
+        return prev
+      })
+    }
+
+    update()
+    window.addEventListener("scroll", update, { passive: true })
+    return () => window.removeEventListener("scroll", update)
+  }, [isAppRoute])
 
   if (isAppRoute) {
     return (
@@ -77,11 +88,13 @@ export function NavBar() {
               </div>
             </div>
 
-            <ThemeToggle />
+            <div className="hidden items-center gap-3 sm:flex">
+              <ThemeToggle />
+            </div>
           </div>
         </header>
       </motion.div>
-    );
+    )
   }
 
   return (
@@ -112,88 +125,129 @@ export function NavBar() {
           transition={EASE}
           className={cn(
             "border-border/50 bg-background/80 backdrop-blur-md transition-[box-shadow,border] duration-500",
-            scrolled
-              ? "border shadow-lg shadow-black/8 dark:shadow-black/20"
-              : "border-b",
+            scrolled ? "border shadow-lg shadow-black/8 dark:shadow-black/20" : "border-b"
           )}
         >
           <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <Network className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <div className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-            <a
-              href="https://miqal.xyz"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-muted-foreground transition-colors hover:text-foreground"
-            >
-              miqal
-            </a>
-            <span className="text-muted-foreground">/</span>
-            <Link href="/" className="transition-colors hover:text-primary">
-              subnify
-            </Link>
-          </div>
-        </div>
+            <div className="flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+                <Network className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+                <a
+                  href="https://miqal.xyz"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  miqal
+                </a>
+                <span className="text-muted-foreground">/</span>
+                <Link href="/" className="transition-colors hover:text-primary">
+                  subnify
+                </Link>
+              </div>
+            </div>
 
-        <nav className="hidden items-center gap-6 md:flex">
-          <Link href="#features" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-            Features
-          </Link>
-          <Link href="#calculator" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-            Calculator
-          </Link>
-          <Link href="#visualizer" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-            Visualizer
-          </Link>
-        </nav>
+            <nav className="hidden items-center gap-6 md:flex">
+              <Link href="#features" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+                Features
+              </Link>
+              <Link
+                href="#calculator"
+                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Calculator
+              </Link>
+              <Link
+                href="#visualizer"
+                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Visualizer
+              </Link>
+            </nav>
 
-        <div className="hidden items-center gap-3 md:flex">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/login">Sign In</Link>
-          </Button>
-          <Button size="sm" asChild>
-            <Link href="/app">Get Started</Link>
-          </Button>
-          <ThemeToggle />
-        </div>
-
-        <button
-          className="md:hidden"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          aria-label="Toggle menu"
-        >
-          {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
-      </div>
-
-      {mobileMenuOpen && (
-        <div className="border-t border-border bg-background px-4 py-4 md:hidden">
-          <nav className="flex flex-col gap-4">
-            <Link href="#features" className="text-sm text-muted-foreground hover:text-foreground">
-              Features
-            </Link>
-            <Link href="#calculator" className="text-sm text-muted-foreground hover:text-foreground">
-              Calculator
-            </Link>
-            <Link href="#visualizer" className="text-sm text-muted-foreground hover:text-foreground">
-              Visualizer
-            </Link>
-            <div className="flex flex-col gap-2 pt-4">
-              <Button variant="ghost" size="sm" className="w-full justify-start" asChild>
-                <Link href="/login">Sign In</Link>
-              </Button>
-              <Button size="sm" className="w-full" asChild>
+            <div className="hidden items-center gap-3 md:flex">
+              {isAuthLoading ? (
+                <Button variant="ghost" size="sm" disabled>
+                  Loading...
+                </Button>
+              ) : isAuthenticated ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" aria-label="Open user menu">
+                      <CircleUserRound className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="min-w-56">
+                    <DropdownMenuLabel className="truncate">{user?.email ?? "Signed in"}</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="destructive" onClick={() => void signOut()}>
+                      <LogOut className="h-4 w-4" />
+                      Sign Out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button variant="ghost" size="sm" onClick={() => openAuthDialog("/app")}>
+                  Sign In
+                </Button>
+              )}
+              <Button size="sm" asChild>
                 <Link href="/app">Get Started</Link>
               </Button>
+              <ThemeToggle />
             </div>
-          </nav>
-        </div>
-      )}
+
+            <button
+              className="md:hidden"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
+          </div>
+
+          {mobileMenuOpen && (
+            <div className="border-t border-border bg-background px-4 py-4 md:hidden">
+              <nav className="flex flex-col gap-4">
+                <Link href="#features" className="text-sm text-muted-foreground hover:text-foreground">
+                  Features
+                </Link>
+                <Link href="#calculator" className="text-sm text-muted-foreground hover:text-foreground">
+                  Calculator
+                </Link>
+                <Link href="#visualizer" className="text-sm text-muted-foreground hover:text-foreground">
+                  Visualizer
+                </Link>
+                <div className="flex flex-col gap-2 pt-4">
+                  {isAuthLoading ? (
+                    <Button variant="ghost" size="sm" className="w-full justify-start" disabled>
+                      Loading...
+                    </Button>
+                  ) : isAuthenticated ? (
+                    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => void signOut()}>
+                      Sign Out
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => openAuthDialog("/app")}
+                    >
+                      Sign In
+                    </Button>
+                  )}
+                  <Button size="sm" className="w-full" asChild>
+                    <Link href="/app">Get Started</Link>
+                  </Button>
+                </div>
+              </nav>
+            </div>
+          )}
         </motion.header>
       </motion.div>
     </div>
-  );
+  )
 }
