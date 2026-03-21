@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { Suspense, useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -45,7 +45,7 @@ interface Subnet {
 
 type CalculatedSubnet = VlsmAllocation
 
-export default function CalculatorPage() {
+function CalculatorPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = useMemo(() => createSupabaseBrowserClient(), [])
@@ -650,5 +650,13 @@ export default function CalculatorPage() {
           )}
         </div>
     </motion.div>
+  )
+}
+
+export default function CalculatorPage() {
+  return (
+    <Suspense fallback={<div className="flex-1 overflow-auto p-4 lg:p-6" />}>
+      <CalculatorPageContent />
+    </Suspense>
   )
 }
