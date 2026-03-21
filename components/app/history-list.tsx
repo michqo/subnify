@@ -1,0 +1,133 @@
+"use client"
+
+import Link from "next/link"
+import { useMemo, useState } from "react"
+import { AnimatePresence, motion } from "framer-motion"
+import { ExternalLink, History, Loader2, Trash2 } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useAuth } from "@/components/core/auth-provider"
+import type { CalculationRecord } from "@/lib/history"
+import { createSupabaseBrowserClient } from "@/lib/supabase/client"
+
+type HistoryListProps = {
+  items: CalculationRecord[]
+  error?: string
+}
+
+export function HistoryList({ items, error }: HistoryListProps) {
+  const supabase = useMemo(() => createSupabaseBrowserClient(), [])
+  const { user } = useAuth()
+  const [records, setRecords] = useState(items)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  const deleteCalculation = async (id: string) => {
+    if (deletingId) {
+      return
+    }
+
+    setDeletingId(id)
+    setDeleteError(null)
+
+    if (!user) {
+      setDeleteError("You must be signed in to delete calculations.")
+      setDeletingId(null)
+      return
+    }
+
+    const { data: deletedRows, error: deleteQueryError } = await supabase
+      .from("calculations")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .select("id")
+
+    if (deleteQueryError) {
+      setDeleteError(`Delete failed: ${deleteQueryError.message}`)
+      setDeletingId(null)
+      return
+    }
+
+    if (!deletedRows || deletedRows.length === 0) {
+      setDeleteError("Delete failed: Calculation was not removed (permission or record mismatch).")
+      setDeletingId(null)
+      return
+    }
+
+    setRecords((current) => current.filter((item) => item.id !== id))
+    setDeletingId(null)
+  }
+
+  return (
+    <div className="flex-1 overflow-auto p-4 lg:p-6">
+      <div className="mx-auto max-w-5xl space-y-6">
+        <Card className="border-border">
+          <CardHeader className="flex flex-row items-center">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <History className="h-4 w-4" />
+              Calculation History
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {deleteError ? <p className="mb-3 text-sm text-destructive">{deleteError}</p> : null}
+            {error ? (
+              <p className="text-sm text-destructive">{error}</p>
+            ) : records.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No saved calculations yet.</p>
+            ) : (
+              <motion.div layout className="space-y-3">
+                <AnimatePresence initial={false}>
+                  {records.map((item) => (
+                    <motion.div
+                      key={item.id}
+                      layout
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.16, ease: "easeOut" }}
+                      className="rounded-lg border border-border bg-secondary/30 p-4"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="font-medium">{item.title ?? `${item.base_network}/${item.base_cidr}`}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {item.base_network}/{item.base_cidr} • {item.input_subnets?.length ?? 0} subnets
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">{new Date(item.created_at).toLocaleString()}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => deleteCalculation(item.id)}
+                            disabled={deletingId !== null}
+                            aria-label="Delete calculation"
+                          >
+                            {deletingId === item.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                          <Button asChild size="sm" className="gap-1.5">
+                            <Link href={`/app?history=${item.id}`}>
+                              Open
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </Link>
+                          </Button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </motion.div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}

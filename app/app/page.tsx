@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Trash2, Calculator, Download, Copy, Check } from "lucide-react"
-import { motion, type Variants } from "framer-motion"
+import { AnimatePresence, motion, type Variants } from "framer-motion"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { useRouter, useSearchParams } from "next/navigation"
 
@@ -182,6 +182,31 @@ export default function CalculatorPage() {
     }
   }, [isAuthenticated, router, searchParams, supabase])
 
+  useEffect(() => {
+    if (!saveMessage && !saveError) {
+      return
+    }
+
+    const timeout = setTimeout(() => {
+      setSaveMessage(null)
+      setSaveError(null)
+    }, 2800)
+
+    return () => clearTimeout(timeout)
+  }, [saveMessage, saveError])
+
+  useEffect(() => {
+    if (!restoreMessage) {
+      return
+    }
+
+    const timeout = setTimeout(() => {
+      setRestoreMessage(null)
+    }, 2800)
+
+    return () => clearTimeout(timeout)
+  }, [restoreMessage])
+
   const exportPdf = async () => {
     if (results.length === 0 || exporting) {
       return
@@ -327,9 +352,48 @@ export default function CalculatorPage() {
               <CardTitle className="text-base">Network Configuration</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {restoreMessage && <p className="text-sm text-muted-foreground">{restoreMessage}</p>}
-              {saveMessage && <p className="text-sm text-muted-foreground">{saveMessage}</p>}
-              {saveError && <p className="text-sm text-destructive">{saveError}</p>}
+              <AnimatePresence mode="popLayout" initial={false}>
+                {restoreMessage ? (
+                  <motion.p
+                    key={`restore-${restoreMessage}`}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.16, ease: "easeOut" }}
+                    className="text-sm text-muted-foreground"
+                  >
+                    {restoreMessage}
+                  </motion.p>
+                ) : null}
+              </AnimatePresence>
+              <AnimatePresence mode="popLayout" initial={false}>
+                {saveMessage ? (
+                  <motion.p
+                    key={`save-${saveMessage}`}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.16, ease: "easeOut" }}
+                    className="text-sm text-muted-foreground"
+                  >
+                    {saveMessage}
+                  </motion.p>
+                ) : null}
+              </AnimatePresence>
+              <AnimatePresence mode="popLayout" initial={false}>
+                {saveError ? (
+                  <motion.p
+                    key={`save-error-${saveError}`}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.16, ease: "easeOut" }}
+                    className="text-sm text-destructive"
+                  >
+                    {saveError}
+                  </motion.p>
+                ) : null}
+              </AnimatePresence>
               <form
                 className="space-y-6"
                 onSubmit={(e) => {
