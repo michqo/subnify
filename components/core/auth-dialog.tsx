@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
-import Link from "next/link"
+import { useMemo, useState } from "react"
 import { Eye, EyeOff, Github } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
@@ -17,17 +17,61 @@ type AuthDialogProps = {
 }
 
 export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogProps) {
-  const supabase = createSupabaseBrowserClient()
+  const supabase = useMemo(() => createSupabaseBrowserClient(), [])
+  const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [statusMessage, setStatusMessage] = useState<string | null>(null)
 
-  const handleEmailLogin = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleEmailAuth = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setIsLoading(true)
     setError(null)
+    setStatusMessage(null)
+
+    if (mode === "sign-up" && password !== confirmPassword) {
+      setError("Passwords do not match.")
+      setIsLoading(false)
+      return
+    }
+
+    if (mode === "sign-up" && password.length < 6) {
+      setError("Password must be at least 6 characters.")
+      setIsLoading(false)
+      return
+    }
+
+    if (mode === "sign-up") {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo:
+            typeof window !== "undefined" ? `${window.location.origin}/app?emailConfirmed=1` : undefined,
+        },
+      })
+
+      if (signUpError) {
+        setError(signUpError.message)
+        setIsLoading(false)
+        return
+      }
+
+      if (data.session) {
+        setIsLoading(false)
+        onAuthenticated?.()
+        return
+      }
+
+      setStatusMessage("Sign-up successful. Check your email to confirm your account.")
+      setIsLoading(false)
+      return
+    }
 
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email,
@@ -46,6 +90,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
 
   const handleOAuthLogin = async (provider: "google" | "github") => {
     setError(null)
+    setStatusMessage(null)
     const { error: signInError } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
@@ -60,21 +105,23 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md overflow-hidden">
-        <DialogTitle className="sr-only">Sign in to your account</DialogTitle>
+      <DialogContent className="max-w-md overflow-y-auto">
+        <DialogTitle className="sr-only">{mode === "sign-in" ? "Sign in to your account" : "Create your account"}</DialogTitle>
         <DialogDescription className="sr-only">
-          Use Google, GitHub, or your email and password to sign in.
+          Use Google, GitHub, or your email and password.
         </DialogDescription>
 
         <div className="w-full p-6 sm:p-8">
           <div className="mb-6 text-center">
-            <h1 className="text-2xl font-bold tracking-tight">Welcome back</h1>
-            <p className="mt-2 text-muted-foreground">Sign in to your account to continue</p>
+            <h1 className="text-2xl font-bold tracking-tight">{mode === "sign-in" ? "Welcome back" : "Create account"}</h1>
+            <p className="mt-2 text-muted-foreground">
+              {mode === "sign-in" ? "Sign in to your account to continue" : "Sign up to save and manage calculation history"}
+            </p>
           </div>
 
           <div className="space-y-3">
             <div className="space-y-3">
-              <Button
+              {/* <Button
                 variant="outline"
                 className="h-11 w-full justify-start gap-3 border-border bg-secondary/50 text-foreground hover:bg-secondary"
                 onClick={() => handleOAuthLogin("google")}
@@ -98,7 +145,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
                   />
                 </svg>
                 Continue with Google
-              </Button>
+              </Button> */}
 
               <Button
                 variant="outline"
@@ -117,67 +164,96 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
               </span>
             </div>
 
-            <form onSubmit={handleEmailLogin} className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-                  Email
-                </label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="you@example.com"
-                  required
-                  className="h-11 border-border bg-secondary/50"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="password" className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-                    Password
-                  </label>
-                  <Link href="#" className="text-sm text-primary hover:underline">
-                    Forgot password?
-                  </Link>
-                </div>
-                <div className="relative">
+            <form onSubmit={handleEmailAuth} className="space-y-4">
+              <FieldGroup>
+                <Field>
+                  <FieldLabel htmlFor="email">Email</FieldLabel>
                   <Input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    placeholder="Enter your password"
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="you@example.com"
                     required
-                    className="h-11 border-border bg-secondary/50 pr-10"
+                    className="h-11 border-border bg-secondary/50"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
+                </Field>
 
-              <Button type="submit" className="h-11 w-full" disabled={isLoading}>
-                {isLoading ? "Signing in..." : "Sign in"}
-              </Button>
+                <Field>
+                  <FieldLabel htmlFor="password">Password</FieldLabel>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      placeholder={mode === "sign-in" ? "Enter your password" : "Create a password"}
+                      required
+                      className="h-11 border-border bg-secondary/50 pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {mode === "sign-up" ? <FieldDescription>Use at least 6 characters.</FieldDescription> : null}
+                </Field>
 
-              {error && <p className="text-sm text-destructive">{error}</p>}
+                {mode === "sign-up" ? (
+                  <Field>
+                    <FieldLabel htmlFor="confirmPassword">Confirm password</FieldLabel>
+                    <div className="relative">
+                      <Input
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"}
+                        autoComplete="new-password"
+                        value={confirmPassword}
+                        onChange={(event) => setConfirmPassword(event.target.value)}
+                        placeholder="Repeat your password"
+                        required
+                        className="h-11 border-border bg-secondary/50 pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </Field>
+                ) : null}
+
+                <Button type="submit" className="h-11 w-full" disabled={isLoading}>
+                  {isLoading ? (mode === "sign-in" ? "Signing in..." : "Creating account...") : mode === "sign-in" ? "Sign in" : "Sign up"}
+                </Button>
+
+                <FieldError>{error}</FieldError>
+                {statusMessage ? <p className="text-sm text-muted-foreground">{statusMessage}</p> : null}
+              </FieldGroup>
             </form>
 
             <p className="mt-6 text-center text-sm text-muted-foreground">
-              {"Don't have an account? "}
-              <Link href="#" className="font-medium text-primary hover:underline">
-                Sign up
-              </Link>
+              {mode === "sign-in" ? "Don't have an account? " : "Already have an account? "}
+              <button
+                type="button"
+                className="font-medium text-primary hover:underline"
+                onClick={() => {
+                  setMode((current) => (current === "sign-in" ? "sign-up" : "sign-in"))
+                  setError(null)
+                  setStatusMessage(null)
+                }}
+              >
+                {mode === "sign-in" ? "Sign up" : "Sign in"}
+              </button>
             </p>
           </div>
         </div>

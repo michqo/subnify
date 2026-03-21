@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import type { User } from "@supabase/supabase-js"
 
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
@@ -22,16 +22,12 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
-  const searchParams = useSearchParams()
   const supabase = useMemo(() => createSupabaseBrowserClient(), [])
 
   const [user, setUser] = useState<User | null>(null)
   const [isAuthLoading, setIsAuthLoading] = useState(true)
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false)
   const [nextPath, setNextPath] = useState<string | null>(null)
-  const requiresAuth = searchParams.get("auth") === "required"
-  const requestedPath = searchParams.get("next")
-  const shouldForceOpenDialog = requiresAuth && !user
 
   useEffect(() => {
     let mounted = true
@@ -58,19 +54,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [supabase])
 
-  useEffect(() => {
-    if (!requiresAuth || !user) {
-      return
-    }
-
-    if (requestedPath) {
-      router.replace(requestedPath)
-      return
-    }
-
-    router.replace("/app")
-  }, [requiresAuth, requestedPath, router, user])
-
   const openAuthDialog = useCallback((requestedPath?: string) => {
     setIsAuthDialogOpen(true)
     if (requestedPath) {
@@ -85,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const handleAuthenticated = useCallback(() => {
     setIsAuthDialogOpen(false)
 
-    const redirectPath = nextPath ?? requestedPath ?? "/app"
+    const redirectPath = nextPath ?? "/app"
     setNextPath(null)
 
     if (pathname === "/") {
@@ -94,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     router.push(redirectPath)
-  }, [nextPath, pathname, requestedPath, router])
+  }, [nextPath, pathname, router])
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut()
@@ -113,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         isAuthenticated: !!user,
         isAuthLoading,
-        isAuthDialogOpen: isAuthDialogOpen || shouldForceOpenDialog,
+        isAuthDialogOpen,
         openAuthDialog,
         closeAuthDialog,
         signOut,
@@ -121,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     >
       {children}
       <AuthDialog
-        open={isAuthDialogOpen || shouldForceOpenDialog}
+        open={isAuthDialogOpen}
         onOpenChange={setIsAuthDialogOpen}
         onAuthenticated={handleAuthenticated}
       />
