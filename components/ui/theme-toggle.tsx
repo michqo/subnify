@@ -1,5 +1,6 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { Check, Moon, Sun, SunMoon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
@@ -20,7 +21,13 @@ const themes = [
 
 export function ThemeToggle() {
   const { theme, resolvedTheme, setTheme } = useTheme();
+  const isClient = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   const activeTheme = theme ?? "system";
+  const TriggerIcon = !isClient ? SunMoon : resolvedTheme === "dark" ? Moon : Sun;
 
   return (
     <DropdownMenu>
@@ -31,18 +38,7 @@ export function ThemeToggle() {
           aria-label="Toggle theme"
           className="relative cursor-pointer overflow-hidden"
         >
-          <Sun
-            className={cn(
-              "relative z-10 h-4 w-4 transition-all duration-300",
-              resolvedTheme === "dark" ? "scale-0 rotate-90 opacity-0" : "scale-100 rotate-0 opacity-100",
-            )}
-          />
-          <Moon
-            className={cn(
-              "absolute z-10 h-4 w-4 transition-all duration-300",
-              resolvedTheme === "dark" ? "scale-100 rotate-0 opacity-100" : "scale-0 -rotate-90 opacity-0",
-            )}
-          />
+          <TriggerIcon className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-36 p-1">
