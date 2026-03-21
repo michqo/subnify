@@ -28,6 +28,14 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
   const [error, setError] = useState<string | null>(null)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
 
+  const appOrigin =
+    typeof window !== "undefined"
+      ? window.location.origin
+      : process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? null
+
+  const oauthRedirectTo = appOrigin ? `${appOrigin}/app` : undefined
+  const emailRedirectTo = appOrigin ? `${appOrigin}/app?emailConfirmed=1` : undefined
+
   const handleEmailAuth = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setIsLoading(true)
@@ -51,8 +59,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
         email,
         password,
         options: {
-          emailRedirectTo:
-            typeof window !== "undefined" ? `${window.location.origin}/app?emailConfirmed=1` : undefined,
+          emailRedirectTo,
         },
       })
 
@@ -94,7 +101,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
     const { error: signInError } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: typeof window !== "undefined" ? window.location.href : undefined,
+        redirectTo: oauthRedirectTo,
       },
     })
 
