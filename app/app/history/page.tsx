@@ -15,7 +15,9 @@ export default async function HistoryPage() {
   const { data, error } = await supabase
     .from("calculations")
     .select("id,title,base_network,base_cidr,input_subnets,total_required_hosts,total_usable_hosts,created_at")
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false })
+    .limit(50)
 
   if (error) {
     return <HistoryList items={[]} error={error.message} />

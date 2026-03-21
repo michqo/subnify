@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Trash2, Calculator, Download, Copy, Check } from "lucide-react"
 import { AnimatePresence, motion, type Variants } from "framer-motion"
@@ -655,7 +656,32 @@ function CalculatorPageContent() {
 
 export default function CalculatorPage() {
   return (
-    <Suspense fallback={<div className="flex-1 overflow-auto p-4 lg:p-6" />}>
+    <Suspense
+      fallback={
+        <div className="flex-1 overflow-auto p-4 lg:p-6">
+          <div className="mx-auto max-w-7xl space-y-6">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle>
+                  <Skeleton className="h-5 w-44" />
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <Skeleton className="h-10 sm:col-span-2 lg:col-span-1" />
+                  <Skeleton className="h-10 w-24" />
+                </div>
+                <Skeleton className="h-28 w-full" />
+                <div className="flex justify-end gap-2">
+                  <Skeleton className="h-11 w-24" />
+                  <Skeleton className="h-11 w-36" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      }
+    >
       <CalculatorPageContent />
     </Suspense>
   )
