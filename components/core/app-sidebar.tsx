@@ -44,9 +44,11 @@ export function AppSidebar() {
   const pathname = usePathname()
   const { state, isMobile, setOpenMobile } = useSidebar()
   const { user, isAuthenticated, openAuthDialog, signOut } = useAuth()
+  // Derive display name directly from user metadata instead of storing in state
+  const computedDisplayName = user?.user_metadata?.display_name || null
   const collapsed = state === "collapsed"
-  const accountLabel = user?.email ?? "Guest"
-  const accountInitials = user?.email?.[0]?.toUpperCase() ?? "G"
+  const accountLabel = (computedDisplayName || user?.email) ?? "Guest"
+  const accountInitials = (computedDisplayName || user?.email)?.[0]?.toUpperCase() ?? "G"
 
   const handleNavClick = () => {
     if (isMobile) {

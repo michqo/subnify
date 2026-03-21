@@ -45,7 +45,7 @@ export function NavBar() {
       : pathname.startsWith("/app/history")
         ? "Review previous subnet calculations"
         : pathname.startsWith("/app/settings")
-          ? "Manage your app preferences"
+          ? "Manage your account preferences"
           : pathname.startsWith("/app/help")
             ? "Get help using Subnify"
             : "Create and review variable length subnet plans",
@@ -180,7 +180,7 @@ export function NavBar() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="min-w-56">
-                    <DropdownMenuLabel className="truncate">{user?.email ?? "Signed in"}</DropdownMenuLabel>
+                    <DropdownMenuLabel className="truncate">{(user?.user_metadata?.display_name || user?.email) ?? "Signed in"}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem variant="destructive" onClick={() => void signOut()}>
                       <LogOut className="h-4 w-4" />

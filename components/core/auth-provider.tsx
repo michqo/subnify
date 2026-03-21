@@ -14,6 +14,7 @@ type AuthContextValue = {
   isAuthDialogOpen: boolean
   openAuthDialog: (nextPath?: string) => void
   closeAuthDialog: () => void
+  refreshUser: () => Promise<void>
   signOut: () => Promise<void>
 }
 
@@ -65,6 +66,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsAuthDialogOpen(false)
   }, [])
 
+  const refreshUser = useCallback(async () => {
+    const { data } = await supabase.auth.getUser()
+    setUser(data.user ?? null)
+  }, [supabase])
+
   const handleAuthenticated = useCallback(() => {
     setIsAuthDialogOpen(false)
 
@@ -99,6 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthDialogOpen,
         openAuthDialog,
         closeAuthDialog,
+        refreshUser,
         signOut,
       }}
     >
