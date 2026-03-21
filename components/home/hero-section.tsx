@@ -52,7 +52,7 @@ export function HeroSection() {
           
           <motion.div variants={itemVariants} className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link href="/app">
-              <Button size="lg" className="gap-2">
+              <Button size="lg" className="gap-2 cursor-pointer">
                 <Calculator className="h-4 w-4" />
                 Start Calculating
                 <ArrowRight className="h-4 w-4" />

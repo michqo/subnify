@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowRight } from "lucide-react"
 import { motion } from "framer-motion"
 import { itemVariants, sectionVariants } from "./motion"
+import Link from "next/link"
 
 export function CTASection() {
   return (
@@ -28,10 +29,12 @@ export function CTASection() {
               Use Subnify to draft and review CIDR/VLSM allocations directly in the browser.
             </motion.p>
             <motion.div variants={itemVariants} className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Button size="lg" className="gap-2">
-                Open Calculator
-                <ArrowRight className="h-4 w-4" />
-              </Button>
+              <Link href="/app">
+                <Button size="lg" className="gap-2 cursor-pointer">
+                  Open Calculator
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
             </motion.div>
           </div>
         </div>
