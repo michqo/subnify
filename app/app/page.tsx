@@ -183,6 +183,29 @@ export default function CalculatorPage() {
   }, [isAuthenticated, router, searchParams, supabase])
 
   useEffect(() => {
+    const emailConfirmedFromQuery = searchParams.get("emailConfirmed") === "1"
+
+    let emailConfirmedFromHash = false
+    if (typeof window !== "undefined" && window.location.hash) {
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""))
+      const callbackType = hashParams.get("type")
+      emailConfirmedFromHash = callbackType === "signup"
+    }
+
+    if (!emailConfirmedFromQuery && !emailConfirmedFromHash) {
+      return
+    }
+
+    setRestoreMessage("Email confirmed. Your account is ready.")
+
+    if (typeof window !== "undefined") {
+      window.history.replaceState({}, "", "/app")
+    } else {
+      router.replace("/app", { scroll: false })
+    }
+  }, [router, searchParams])
+
+  useEffect(() => {
     if (!saveMessage && !saveError) {
       return
     }
@@ -202,7 +225,7 @@ export default function CalculatorPage() {
 
     const timeout = setTimeout(() => {
       setRestoreMessage(null)
-    }, 2800)
+    }, 4200)
 
     return () => clearTimeout(timeout)
   }, [restoreMessage])

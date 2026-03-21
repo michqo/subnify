@@ -38,7 +38,6 @@ import { useAuth } from "@/components/core/auth-provider"
 const navigation = [
   { name: "Calculator", href: "/app", icon: Calculator },
   { name: "Visualizer", href: "/app/visualizer", icon: GitBranch },
-  { name: "History", href: "/app/history", icon: History },
 ]
 
 export function AppSidebar() {
@@ -54,6 +53,8 @@ export function AppSidebar() {
       setOpenMobile(false)
     }
   }
+
+  const items = isAuthenticated ? [...navigation, { name: "History", href: "/app/history", icon: History }] : navigation
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -83,7 +84,7 @@ export function AppSidebar() {
 
       <SidebarContent className="px-2 py-3">
         <SidebarMenu>
-          {navigation.map((item) => (
+          {items.map((item) => (
             <SidebarMenuItem key={item.name}>
               <SidebarMenuButton asChild isActive={pathname === item.href}>
                 <Link href={item.href} onClick={handleNavClick}>
