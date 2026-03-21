@@ -1,6 +1,5 @@
 "use client"
 
-import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { useAuth } from "@/components/core/auth-provider"
 import { cn } from "@/lib/utils"
 import { motion } from "framer-motion"
@@ -45,7 +44,7 @@ export function NavBar() {
       : pathname.startsWith("/app/history")
         ? "Review previous subnet calculations"
         : pathname.startsWith("/app/settings")
-          ? "Manage your account preferences"
+          ? "Manage your preferences"
           : pathname.startsWith("/app/help")
             ? "Get help using Subnify"
             : "Create and review variable length subnet plans",
@@ -88,9 +87,7 @@ export function NavBar() {
               </div>
             </div>
 
-            <div className="hidden items-center gap-3 sm:flex">
-              <ThemeToggle />
-            </div>
+            <div className="hidden sm:block" />
           </div>
         </header>
       </motion.div>
@@ -196,7 +193,6 @@ export function NavBar() {
               <Button size="sm" asChild>
                 <Link href="/app">Get Started</Link>
               </Button>
-              <ThemeToggle />
             </div>
 
             <button

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useAuth } from "@/components/core/auth-provider"
 
@@ -107,69 +108,88 @@ export default function SettingsPage() {
   return (
     <div className="flex-1 overflow-auto p-4 lg:p-6">
       <div className="mx-auto max-w-2xl space-y-6">
-        {/* Username Section */}
         <Card className="border-border">
           <CardHeader>
-            <CardTitle className="text-base">Profile</CardTitle>
+            <CardTitle className="text-base">Appearance</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleUsernameUpdate} className="space-y-4">
-              <FieldGroup>
-                <Field>
-                  <FieldLabel htmlFor="email">Email</FieldLabel>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    value={user?.email ?? ""}
-                    disabled
-                    className="h-11 border-border bg-secondary/50"
-                  />
-                  <FieldDescription>Your email cannot be changed.</FieldDescription>
-                </Field>
-
-                <Field>
-                  <FieldLabel htmlFor="username">Username (optional)</FieldLabel>
-                  <Input
-                    id="username"
-                    name="username"
-                    type="text"
-                    autoComplete="username"
-                    value={isUsernameDirty ? usernameDraft : currentDisplayName}
-                    onChange={(e) => {
-                      setIsUsernameDirty(true)
-                      setUsernameDraft(e.target.value)
-                    }}
-                    placeholder="Set a display name"
-                    className="h-11 border-border bg-secondary/50"
-                  />
-                  <FieldDescription>This will be shown instead of your email.</FieldDescription>
-                </Field>
-
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading ? "Saving..." : "Save Username"}
-                </Button>
-
-                <AnimatePresence mode="popLayout" initial={false}>
-                  {usernameMessage ? (
-                    <motion.div
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
-                      transition={{ duration: 0.16, ease: "easeOut" }}
-                      className={`text-sm ${
-                        usernameMessage.type === "error" ? "text-destructive" : "text-muted-foreground"
-                      }`}
-                    >
-                      {usernameMessage.text}
-                    </motion.div>
-                  ) : null}
-                </AnimatePresence>
-              </FieldGroup>
-            </form>
+            <FieldGroup>
+              <Field>
+                <FieldLabel>Theme</FieldLabel>
+                <div className="flex items-center gap-3">
+                  <ThemeToggle />
+                  <FieldDescription>Choose light, dark, or system theme.</FieldDescription>
+                </div>
+              </Field>
+            </FieldGroup>
           </CardContent>
         </Card>
+
+        {/* Username Section */}
+        {isAuthenticated ? (
+          <Card className="border-border">
+            <CardHeader>
+              <CardTitle className="text-base">Profile</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleUsernameUpdate} className="space-y-4">
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel htmlFor="email">Email</FieldLabel>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      autoComplete="email"
+                      value={user?.email ?? ""}
+                      disabled
+                      className="h-11 border-border bg-secondary/50"
+                    />
+                    <FieldDescription>Your email cannot be changed.</FieldDescription>
+                  </Field>
+
+                  <Field>
+                    <FieldLabel htmlFor="username">Username (optional)</FieldLabel>
+                    <Input
+                      id="username"
+                      name="username"
+                      type="text"
+                      autoComplete="username"
+                      value={isUsernameDirty ? usernameDraft : currentDisplayName}
+                      onChange={(e) => {
+                        setIsUsernameDirty(true)
+                        setUsernameDraft(e.target.value)
+                      }}
+                      placeholder="Set a display name"
+                      className="h-11 border-border bg-secondary/50"
+                    />
+                    <FieldDescription>This will be shown instead of your email.</FieldDescription>
+                  </Field>
+
+                  <Button type="submit" disabled={isLoading}>
+                    {isLoading ? "Saving..." : "Save Username"}
+                  </Button>
+
+                  <AnimatePresence mode="popLayout" initial={false}>
+                    {usernameMessage ? (
+                      <motion.div
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.16, ease: "easeOut" }}
+                        className={`text-sm ${
+                          usernameMessage.type === "error" ? "text-destructive" : "text-muted-foreground"
+                        }`}
+                      >
+                        {usernameMessage.text}
+                      </motion.div>
+                    ) : null}
+                  </AnimatePresence>
+                </FieldGroup>
+              </form>
+            </CardContent>
+          </Card>
+        ) : null}
 
         {canChangePassword ? (
           <Card className="border-border">
