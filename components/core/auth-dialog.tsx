@@ -28,10 +28,17 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
   const [error, setError] = useState<string | null>(null)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
 
-  const appOrigin = typeof window !== "undefined" ? window.location.origin : null
+  const getAppOrigin = () => {
+    if (typeof window === "undefined") {
+      return null
+    }
 
-  const oauthRedirectTo = appOrigin ? `${appOrigin}/app` : undefined
-  const emailRedirectTo = appOrigin ? `${appOrigin}/app?emailConfirmed=1` : undefined
+    try {
+      return new URL(window.location.href).origin
+    } catch {
+      return window.location.origin || null
+    }
+  }
 
   const handleEmailAuth = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -52,6 +59,9 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
     }
 
     if (mode === "sign-up") {
+      const appOrigin = getAppOrigin()
+      const emailRedirectTo = appOrigin ? `${appOrigin}/app?emailConfirmed=1` : undefined
+
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -95,6 +105,15 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
   const handleOAuthLogin = async (provider: "google" | "github") => {
     setError(null)
     setStatusMessage(null)
+
+    const appOrigin = getAppOrigin()
+    const oauthRedirectTo = appOrigin ? `${appOrigin}/app` : undefined
+
+    if (!oauthRedirectTo) {
+      setError("Could not determine redirect URL for this device. Please refresh and try again.")
+      return
+    }
+
     const { error: signInError } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
