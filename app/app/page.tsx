@@ -52,6 +52,7 @@ interface AiDesignedSubnet {
 interface AiDesignedPlan {
   baseNetwork?: string | null
   baseCidr?: number | null
+  title?: string
   subnets?: AiDesignedSubnet[]
   rationale?: string | null
 }
@@ -162,7 +163,7 @@ function CalculatorPageContent() {
       sourceType: pendingAiPrompt ? "ai_design" : "manual",
       aiPrompt: pendingAiPrompt,
       aiRationale: pendingAiRationale,
-      title: pendingAiPrompt ? pendingAiRationale : null,
+      title: null,
     })
     setPendingAiPrompt(null)
     setPendingAiRationale(null)
@@ -232,10 +233,7 @@ function CalculatorPageContent() {
           ? parsedPlan.rationale
           : null
       )
-      const aiGeneratedTitle =
-        typeof parsedPlan.rationale === "string" && parsedPlan.rationale.trim().length > 0
-          ? parsedPlan.rationale.trim().slice(0, 120)
-          : null
+      const aiGeneratedTitle = typeof parsedPlan.title === "string" ? parsedPlan.title : null
 
       void saveCalculation(calculated, { baseNetwork: nextBaseNetwork, baseCidr: nextBaseCidr, subnets: designedSubnets }, {
         sourceType: "ai_design",

@@ -18,6 +18,7 @@ type DesignerSubnet = {
 type DesignerPlan = {
   baseNetwork: string | null
   baseCidr: number | null
+  title: string
   rationale: string
   subnets: DesignerSubnet[]
 }

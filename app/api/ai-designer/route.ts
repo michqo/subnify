@@ -11,6 +11,7 @@ type DesignerSubnet = {
 type DesignerPlan = {
   baseNetwork: string | null
   baseCidr: number | null
+  title: string
   rationale: string
   subnets: DesignerSubnet[]
 }
@@ -104,6 +105,10 @@ function sanitizePlan(input: unknown): DesignerPlan {
   return {
     baseNetwork: typeof source.baseNetwork === "string" && source.baseNetwork.trim().length > 0 ? source.baseNetwork.trim() : null,
     baseCidr,
+    title:
+      typeof source.title === "string" && source.title.trim().length > 0
+        ? source.title.trim().slice(0, 80)
+        : "Network Design",
     rationale:
       typeof source.rationale === "string" && source.rationale.trim().length > 0
         ? source.rationale.trim()
@@ -231,6 +236,7 @@ export async function POST(request: Request) {
   const instruction = `You are a senior network architect.
 Given a user prompt, produce only valid JSON with this exact shape:
 {
+  "title": string,
   "baseNetwork": string | null,
   "baseCidr": number | null,
   "rationale": string,
@@ -243,6 +249,7 @@ Given a user prompt, produce only valid JSON with this exact shape:
   ]
 }
 Rules:
+- Title: a short meaningful title (2-5 words) summarizing the network design.
 - Hosts are required hosts per subnet (usable host count target).
 - Keep subnet count between 1 and 20.
 - Prefer realistic LAN names.
