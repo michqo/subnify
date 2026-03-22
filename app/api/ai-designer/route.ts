@@ -21,12 +21,6 @@ type QuotaSnapshot = {
   used: number
   remaining: number
   windowHours: number
-  approximateWaitSeconds: number
-}
-
-type LatencySample = {
-  latencyMs: number
-  promptLength: number
 }
 
 const WINDOW_HOURS = 24
@@ -39,45 +33,6 @@ function getDailyLimit() {
   return 3
 }
 
-function getPercentile(values: number[], percentile: number) {
-  if (values.length === 0) {
-    return 0
-  }
-
-  const sorted = [...values].sort((a, b) => a - b)
-  const rank = Math.min(sorted.length - 1, Math.max(0, Math.floor((percentile / 100) * (sorted.length - 1))))
-  return sorted[rank]
-}
-
-function estimateWaitSeconds(samples: LatencySample[], promptLength?: number) {
-  if (samples.length === 0) {
-    return 180
-  }
-
-  const latencies = samples.map((sample) => sample.latencyMs)
-  const p50 = getPercentile(latencies, 50)
-  const p75 = getPercentile(latencies, 75)
-  const p90 = getPercentile(latencies, 90)
-
-  const promptLengths = samples.map((sample) => Math.max(1, sample.promptLength))
-  const averagePromptLength = Math.max(1, Math.round(promptLengths.reduce((sum, size) => sum + size, 0) / promptLengths.length))
-  const averageLatencyMs = Math.round(latencies.reduce((sum, latency) => sum + latency, 0) / latencies.length)
-  const msPerChar = averageLatencyMs / averagePromptLength
-
-  const targetPromptLength = Number.isFinite(promptLength) && (promptLength ?? 0) > 0
-    ? Math.max(1, Math.floor(promptLength ?? 1))
-    : averagePromptLength
-
-  const promptWeightedLatencyMs = Math.round(targetPromptLength * msPerChar)
-
-  const conservativeLatencyMs = Math.max(
-    p75,
-    p50 + Math.round((p90 - p50) * 0.75),
-    Math.round(promptWeightedLatencyMs * 1.1)
-  )
-
-  return Math.max(45, Math.min(900, Math.round(conservativeLatencyMs / 1000)))
-}
 
 function sanitizePlan(input: unknown): DesignerPlan {
   const source = typeof input === "object" && input ? (input as Record<string, unknown>) : {}
@@ -119,8 +74,7 @@ function sanitizePlan(input: unknown): DesignerPlan {
 
 async function getQuotaSnapshot(
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
-  userId: string,
-  promptLength?: number
+  userId: string
 ) {
   const limit = getDailyLimit()
   const windowStart = new Date(Date.now() - WINDOW_HOURS * 60 * 60 * 1000).toISOString()
@@ -135,38 +89,17 @@ async function getQuotaSnapshot(
   const used = count ?? 0
   const remaining = Math.max(0, limit - used)
 
-  const { data: recentRows } = await supabase
-    .from("ai_design_requests")
-    .select("latency_ms,prompt")
-    .eq("user_id", userId)
-    .eq("status", "success")
-    .not("latency_ms", "is", null)
-    .order("created_at", { ascending: false })
-    .limit(40)
-
-  const samples: LatencySample[] = (recentRows ?? [])
-    .map((row) => {
-      const latencyMs = Number(row.latency_ms)
-      const promptValue = typeof row.prompt === "string" ? row.prompt : ""
-      return {
-        latencyMs,
-        promptLength: promptValue.length,
-      }
-    })
-    .filter((sample) => Number.isFinite(sample.latencyMs) && sample.latencyMs > 0)
-
   const quota: QuotaSnapshot = {
     limit,
     used,
     remaining,
     windowHours: WINDOW_HOURS,
-    approximateWaitSeconds: estimateWaitSeconds(samples, promptLength),
   }
 
   return quota
 }
 
-export async function GET(request: Request) {
+export async function GET() {
   const supabase = await createSupabaseServerClient()
   const {
     data: { user },
@@ -176,11 +109,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const requestUrl = new URL(request.url)
-  const rawPromptLength = Number(requestUrl.searchParams.get("promptLength"))
-  const promptLength = Number.isFinite(rawPromptLength) && rawPromptLength > 0 ? Math.floor(rawPromptLength) : undefined
-
-  const quota = await getQuotaSnapshot(supabase, user.id, promptLength)
+  const quota = await getQuotaSnapshot(supabase, user.id)
   return NextResponse.json({ quota })
 }
 
@@ -197,7 +126,7 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as { prompt?: unknown }
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : ""
 
-  const quota = await getQuotaSnapshot(supabase, user.id, prompt.length)
+  const quota = await getQuotaSnapshot(supabase, user.id)
 
   if (quota.remaining <= 0) {
     await supabase.from("ai_design_requests").insert({
@@ -321,15 +250,6 @@ Rules:
       ...quota,
       used: quota.used + 1,
       remaining: Math.max(0, quota.remaining - 1),
-      approximateWaitSeconds: estimateWaitSeconds(
-        [
-          {
-            latencyMs,
-            promptLength: prompt.length,
-          },
-        ],
-        prompt.length
-      ),
     }
 
     return NextResponse.json({ plan, quota: updatedQuota, timing: { latencyMs } })

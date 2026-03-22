@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Sparkles, Wand2 } from "lucide-react"
+import { Loader2, Sparkles, Wand2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -33,7 +33,6 @@ type QuotaSnapshot = {
   used: number
   remaining: number
   windowHours: number
-  approximateWaitSeconds: number
 }
 
 function formatWaitTime(seconds: number): string {
@@ -85,18 +84,6 @@ export function DesignerPageClient() {
     if (!normalizedPrompt) {
       setError("Please enter a prompt first.")
       return
-    }
-
-    const promptLength = normalizedPrompt.length
-
-    try {
-      const quotaResponse = await fetch(`/api/ai-designer?promptLength=${promptLength}`, { method: "GET" })
-      const quotaPayload = (await quotaResponse.json().catch(() => ({}))) as { quota?: QuotaSnapshot }
-      if (quotaResponse.ok && quotaPayload.quota) {
-        setQuota(quotaPayload.quota)
-      }
-    } catch {
-      // Keep previous quota snapshot if preflight estimate fails.
     }
 
     setIsGenerating(true)
@@ -215,20 +202,16 @@ export function DesignerPageClient() {
             <CardHeader>
               <CardTitle className="text-base">Generated Plan</CardTitle>
               <CardDescription>
-                This can take around {formatWaitTime(quota?.approximateWaitSeconds ?? 90)} on free models. Elapsed: {formatWaitTime(elapsedSeconds)}.
+                This typically takes 30-300 seconds depending on prompt length. Elapsed: {formatWaitTime(elapsedSeconds)}.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="h-2 overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full bg-primary transition-all"
-                  style={{
-                    width: `${Math.min(
-                      100,
-                      Math.round((elapsedSeconds / Math.max(1, quota?.approximateWaitSeconds ?? 90)) * 100)
-                    )}%`,
-                  }}
-                />
+                <div className="h-full w-1/3 animate-pulse rounded-full bg-primary" />
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Generating your network design...
               </div>
               <Skeleton className="h-4 w-2/3" />
               <Skeleton className="h-4 w-1/2" />
