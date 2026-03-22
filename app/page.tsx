@@ -9,7 +9,7 @@ import { Footer } from "@/components/home/footer"
 export const metadata: Metadata = {
   title: "miqal / subnify",
   description:
-    "Subnet planning and network visualization with Subnify, part of Michal Urban's connected miqal ecosystem.",
+    "Design and visualize subnet layouts in seconds with VLSM planning, overlap-safe allocation, and clear address space visibility.",
 }
 
 export default function HomePage() {

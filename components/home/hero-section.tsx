@@ -37,17 +37,17 @@ export function HeroSection() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
             </span>
-            CIDR and VLSM subnet tooling
+            VLSM subnet planning for real networks
             <Badge variant="outline" className="ml-1">Alpha</Badge>
           </motion.div>
           
           <motion.h1 variants={itemVariants} className="text-balance text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-            Calculate subnet allocations{" "}
-            <span className="bg-linear-to-r from-primary to-cyan-700 bg-clip-text text-transparent">with precision</span>
+            Design and visualize subnet layouts{" "}
+            <span className="bg-linear-to-r from-primary to-cyan-700 bg-clip-text text-transparent">in seconds</span>
           </motion.h1>
           
           <motion.p variants={itemVariants} className="mx-auto mt-6 max-w-2xl text-pretty text-lg text-muted-foreground sm:text-xl">
-            Define a base network, set host requirements, and inspect generated subnet ranges and hierarchy.
+            Plan VLSM networks, avoid overlapping allocations, and see your address space clearly before you deploy.
           </motion.p>
           
           <motion.div variants={itemVariants} className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">

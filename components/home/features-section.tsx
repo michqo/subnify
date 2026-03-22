@@ -1,7 +1,7 @@
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calculator, Network, Zap, Shield, Download, GitBranch } from "lucide-react"
+import { Calculator, Network, Zap, Shield, Download, GitBranch, Sparkles } from "lucide-react"
 import { motion } from "framer-motion"
 import { itemVariants, sectionVariants } from "./motion"
 
@@ -9,32 +9,37 @@ const features = [
   {
     icon: Calculator,
     title: "VLSM Calculator",
-    description: "Allocates subnets from host requirements using a VLSM-first flow.",
+    description: "Allocate subnet blocks from host requirements using a proper largest-first strategy. No overlaps. No guesswork.",
   },
   {
     icon: Network,
     title: "Network Visualization",
-    description: "Displays how each block occupies the parent address space.",
+    description: "See exactly how each subnet fits into the parent network with a clear visual map of your address space.",
+  },
+  {
+    icon: Sparkles,
+    title: "AI Designer",
+    description: "Generate structured subnet plans from intent and constraints, then refine them instantly in the calculator.",
   },
   {
     icon: Zap,
     title: "Instant Results",
-    description: "Runs calculations client-side for fast iteration while planning.",
+    description: "All calculations run instantly in your browser, so you can iterate quickly without workflow friction.",
   },
   {
     icon: Shield,
-    title: "RFC Compliant",
-    description: "Uses CIDR notation and RFC 1918 private addressing conventions.",
+    title: "RFC-Compliant Output",
+    description: "Work with standard CIDR notation and private address ranges based on RFC 1918.",
   },
   {
     icon: Download,
-    title: "Export Options",
-    description: "Exports calculation output for documentation and review workflows.",
+    title: "Export Ready",
+    description: "Export subnet plans for documentation, handoff, or review.",
   },
   {
     icon: GitBranch,
     title: "Subnet Hierarchy",
-    description: "Shows parent-child relationships between generated subnet blocks.",
+    description: "Understand parent-child relationships across your allocations with a structured hierarchy view.",
   },
 ]
 
@@ -52,11 +57,10 @@ export function FeaturesSection() {
         <motion.div variants={itemVariants} className="mx-auto max-w-2xl text-center">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-primary">Features</h2>
           <p className="mt-2 text-balance text-3xl font-bold tracking-tight sm:text-4xl">
-            Focused subnet toolset
+            Focused subnet planning
           </p>
           <p className="mt-4 text-pretty text-muted-foreground">
-            Technical features for planning and validating IPv4 subnet layouts.
-            Designed to integrate with future tools in the miqal portfolio.
+            Plan IPv4 networks with a workflow built for real-world VLSM design — faster, clearer, and easier to validate.
           </p>
         </motion.div>
 
