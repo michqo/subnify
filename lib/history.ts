@@ -8,6 +8,9 @@ export type SubnetInput = {
 export type CalculationRecord = {
   id: string
   title: string | null
+  source_type: "manual" | "ai_design"
+  ai_prompt: string | null
+  ai_rationale: string | null
   base_network: string
   base_cidr: number
   input_subnets: SubnetInput[]
@@ -19,6 +22,9 @@ export type CalculationRecord = {
 
 export type CalculationInsert = {
   title: string | null
+  source_type?: "manual" | "ai_design"
+  ai_prompt?: string | null
+  ai_rationale?: string | null
   base_network: string
   base_cidr: number
   input_subnets: SubnetInput[]

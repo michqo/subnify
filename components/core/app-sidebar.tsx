@@ -26,6 +26,7 @@ import {
   Network,
   Calculator,
   GitBranch,
+  Sparkles,
   History,
   Settings,
   HelpCircle,
@@ -56,7 +57,7 @@ export function AppSidebar() {
     }
   }
 
-  const items = isAuthenticated ? [...navigation, { name: "History", href: "/app/history", icon: History }] : navigation
+  const items = isAuthenticated ? [...navigation, { name: "Designer", href: "/app/designer", icon: Sparkles }, { name: "Subnet History", href: "/app/history", icon: History }] : navigation
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">

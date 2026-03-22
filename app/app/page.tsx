@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect, useMemo, useState } from "react"
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -44,6 +44,23 @@ interface Subnet {
   hosts: number
 }
 
+interface AiDesignedSubnet {
+  name?: string
+  hosts?: number
+}
+
+interface AiDesignedPlan {
+  baseNetwork?: string | null
+  baseCidr?: number | null
+  subnets?: AiDesignedSubnet[]
+  rationale?: string | null
+}
+
+interface StoredAiDesignPayload {
+  prompt?: string
+  plan?: AiDesignedPlan
+}
+
 type CalculatedSubnet = VlsmAllocation
 
 function CalculatorPageContent() {
@@ -65,6 +82,8 @@ function CalculatorPageContent() {
   const [restoreMessage, setRestoreMessage] = useState<string | null>(null)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [pendingAiPrompt, setPendingAiPrompt] = useState<string | null>(null)
+  const [pendingAiRationale, setPendingAiRationale] = useState<string | null>(null)
 
   const addSubnet = () => {
     const newId = Math.max(...subnets.map((s) => s.id), 0) + 1
@@ -84,7 +103,16 @@ function CalculatorPageContent() {
     )
   }
 
-  const saveCalculation = async (calculatedResults: CalculatedSubnet[]) => {
+  const saveCalculation = useCallback(async (
+    calculatedResults: CalculatedSubnet[],
+    snapshot: { baseNetwork: string; baseCidr: string; subnets: Subnet[] },
+    options?: {
+      sourceType?: "manual" | "ai_design"
+      aiPrompt?: string | null
+      aiRationale?: string | null
+      title?: string | null
+    }
+  ) => {
     if (isAuthLoading) {
       return
     }
@@ -95,11 +123,16 @@ function CalculatorPageContent() {
 
     const totalRequiredHosts = calculatedResults.reduce((sum, subnet) => sum + subnet.requiredHosts, 0)
     const totalUsableHosts = calculatedResults.reduce((sum, subnet) => sum + subnet.usableHosts, 0)
+    const normalizedTitle =
+      typeof options?.title === "string" && options.title.trim().length > 0 ? options.title.trim() : null
     const payload: CalculationInsert = {
-      title: `${baseNetwork}/${baseCidr} (${subnets.length} subnets)`,
-      base_network: baseNetwork,
-      base_cidr: Number(baseCidr) || 0,
-      input_subnets: subnets.map(({ name, hosts }) => ({ name, hosts })),
+      title: normalizedTitle ?? `${snapshot.baseNetwork}/${snapshot.baseCidr} (${snapshot.subnets.length} subnets)`,
+      source_type: options?.sourceType ?? "manual",
+      ai_prompt: options?.aiPrompt ?? null,
+      ai_rationale: options?.aiRationale ?? null,
+      base_network: snapshot.baseNetwork,
+      base_cidr: Number(snapshot.baseCidr) || 0,
+      input_subnets: snapshot.subnets.map(({ name, hosts }) => ({ name, hosts })),
       result_subnets: calculatedResults,
       total_required_hosts: totalRequiredHosts,
       total_usable_hosts: totalUsableHosts,
@@ -118,15 +151,107 @@ function CalculatorPageContent() {
 
     setSaveError(null)
     setSaveMessage("Calculation saved to history.")
-  }
+  }, [isAuthLoading, isAuthenticated, supabase, user])
 
   const calculateVLSM = () => {
     setSaveMessage(null)
     setSaveError(null)
     const calculatedResults = calculateVlsm(baseNetwork, subnets)
     setResults(calculatedResults)
-    void saveCalculation(calculatedResults)
+    void saveCalculation(calculatedResults, { baseNetwork, baseCidr, subnets }, {
+      sourceType: pendingAiPrompt ? "ai_design" : "manual",
+      aiPrompt: pendingAiPrompt,
+      aiRationale: pendingAiRationale,
+      title: pendingAiPrompt ? pendingAiRationale : null,
+    })
+    setPendingAiPrompt(null)
+    setPendingAiRationale(null)
   }
+
+  useEffect(() => {
+    const shouldApplyAiDesign = searchParams.get("aiDesign") === "1"
+
+    if (!shouldApplyAiDesign || typeof window === "undefined") {
+      return
+    }
+
+    const rawPlan = window.sessionStorage.getItem("subnify_ai_plan")
+    window.sessionStorage.removeItem("subnify_ai_plan")
+
+    if (!rawPlan) {
+      setRestoreMessage("No AI design found. Generate one from the Designer tab.")
+      router.replace("/app", { scroll: false })
+      return
+    }
+
+    try {
+      const parsed = JSON.parse(rawPlan) as StoredAiDesignPayload | AiDesignedPlan
+      const parsedPlan =
+        typeof parsed === "object" && parsed && "plan" in parsed && parsed.plan ? parsed.plan : (parsed as AiDesignedPlan)
+      const aiPrompt =
+        typeof parsed === "object" && parsed && "prompt" in parsed && typeof parsed.prompt === "string"
+          ? parsed.prompt
+          : null
+
+      const rawSubnets = Array.isArray(parsedPlan.subnets) ? parsedPlan.subnets : []
+      const designedSubnets = rawSubnets
+        .map((subnet, index) => ({
+          id: index + 1,
+          name:
+            typeof subnet.name === "string" && subnet.name.trim().length > 0
+              ? subnet.name.trim()
+              : `LAN ${String.fromCharCode(65 + (index % 26))}`,
+          hosts: Number.isFinite(Number(subnet.hosts)) ? Math.max(2, Math.floor(Number(subnet.hosts))) : 2,
+        }))
+        .slice(0, 20)
+
+      if (designedSubnets.length === 0) {
+        setRestoreMessage("Generated design was empty. Please try a different prompt.")
+        router.replace("/app", { scroll: false })
+        return
+      }
+
+      const nextBaseNetwork =
+        typeof parsedPlan.baseNetwork === "string" && parsedPlan.baseNetwork.trim().length > 0
+          ? parsedPlan.baseNetwork.trim()
+          : "192.168.0.0"
+      const nextBaseCidr = Number.isFinite(Number(parsedPlan.baseCidr)) ? String(parsedPlan.baseCidr) : "24"
+
+      setBaseNetwork(nextBaseNetwork)
+      setBaseCidr(nextBaseCidr)
+      setSubnets(designedSubnets)
+
+      const calculated = calculateVlsm(nextBaseNetwork, designedSubnets)
+      setResults(calculated)
+      setSaveMessage(null)
+      setSaveError(null)
+      setRestoreMessage("Applied AI-generated design.")
+      setPendingAiPrompt(aiPrompt)
+      setPendingAiRationale(
+        typeof parsedPlan.rationale === "string" && parsedPlan.rationale.trim().length > 0
+          ? parsedPlan.rationale
+          : null
+      )
+      const aiGeneratedTitle =
+        typeof parsedPlan.rationale === "string" && parsedPlan.rationale.trim().length > 0
+          ? parsedPlan.rationale.trim().slice(0, 120)
+          : null
+
+      void saveCalculation(calculated, { baseNetwork: nextBaseNetwork, baseCidr: nextBaseCidr, subnets: designedSubnets }, {
+        sourceType: "ai_design",
+        aiPrompt,
+        aiRationale:
+          typeof parsedPlan.rationale === "string" && parsedPlan.rationale.trim().length > 0
+            ? parsedPlan.rationale
+            : null,
+        title: aiGeneratedTitle,
+      })
+    } catch {
+      setRestoreMessage("Could not parse AI design. Please generate again.")
+    } finally {
+      router.replace("/app", { scroll: false })
+    }
+  }, [router, searchParams, isAuthenticated, isAuthLoading, user, saveCalculation])
 
   useEffect(() => {
     const historyId = searchParams.get("history")

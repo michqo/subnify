@@ -1,11 +1,12 @@
 "use client"
 
-import Link from "next/link"
 import { useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import { AnimatePresence, motion } from "framer-motion"
-import { ExternalLink, History, Loader2, Trash2 } from "lucide-react"
+import { History, Loader2, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/components/core/auth-provider"
 import type { CalculationRecord } from "@/lib/history"
@@ -17,6 +18,7 @@ type HistoryListProps = {
 }
 
 export function HistoryList({ items, error }: HistoryListProps) {
+  const router = useRouter()
   const supabase = useMemo(() => createSupabaseBrowserClient(), [])
   const { user } = useAuth()
   const [records, setRecords] = useState(items)
@@ -67,7 +69,7 @@ export function HistoryList({ items, error }: HistoryListProps) {
           <CardHeader className="flex flex-row items-center">
             <CardTitle className="flex items-center gap-2 text-base">
               <History className="h-4 w-4" />
-              Calculation History
+              Subnet History
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -79,49 +81,64 @@ export function HistoryList({ items, error }: HistoryListProps) {
             ) : (
               <motion.div layout className="space-y-3">
                 <AnimatePresence initial={false}>
-                  {records.map((item) => (
-                    <motion.div
-                      key={item.id}
-                      layout
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8 }}
-                      transition={{ duration: 0.16, ease: "easeOut" }}
-                      className="rounded-lg border border-border bg-secondary/30 p-4"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="font-medium">{item.title ?? `${item.base_network}/${item.base_cidr}`}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {item.base_network}/{item.base_cidr} • {item.input_subnets?.length ?? 0} subnets
-                          </p>
-                          <p className="mt-1 text-xs text-muted-foreground">{new Date(item.created_at).toLocaleString()}</p>
+                  {records.map((item) => {
+                    const subnetCount =
+                      item.result_subnets.length > 0 ? item.result_subnets.length : (item.input_subnets?.length ?? 0)
+
+                    return (
+                      <motion.div
+                        key={item.id}
+                        layout
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.16, ease: "easeOut" }}
+                        className="rounded-lg border border-border bg-secondary/30 p-4"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">{item.title ?? `${item.base_network}/${item.base_cidr}`}</p>
+                              <Badge variant={item.source_type === "ai_design" ? "secondary" : "outline"}>
+                                {item.source_type === "ai_design" ? "AI design" : "Manual"}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {item.base_network}/{item.base_cidr} • {subnetCount} subnets
+                            </p>
+                            {item.source_type === "ai_design" && item.ai_prompt ? (
+                              <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">Prompt: {item.ai_prompt}</p>
+                            ) : null}
+                            <p className="mt-1 text-xs text-muted-foreground">{new Date(item.created_at).toLocaleString()}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              onClick={() => deleteCalculation(item.id)}
+                              disabled={deletingId !== null}
+                              aria-label="Delete calculation"
+                            >
+                              {deletingId === item.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="gap-1.5"
+                              onClick={() => router.push(`/app?history=${item.id}`)}
+                            >
+                              View calculation
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={() => deleteCalculation(item.id)}
-                            disabled={deletingId !== null}
-                            aria-label="Delete calculation"
-                          >
-                            {deletingId === item.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-3.5 w-3.5" />
-                            )}
-                          </Button>
-                          <Button asChild size="sm" className="gap-1.5">
-                            <Link href={`/app?history=${item.id}`}>
-                              Open
-                              <ExternalLink className="h-3.5 w-3.5" />
-                            </Link>
-                          </Button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
+                      </motion.div>
+                    )
+                  })}
                 </AnimatePresence>
               </motion.div>
             )}

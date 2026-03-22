@@ -119,7 +119,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
           <div className="mb-6 text-center">
             <h1 className="text-2xl font-bold tracking-tight">{mode === "sign-in" ? "Welcome back" : "Create account"}</h1>
             <p className="mt-2 text-muted-foreground">
-              {mode === "sign-in" ? "Sign in to your account to continue" : "Sign up to save and manage calculation history"}
+              {mode === "sign-in" ? "Sign in to your account to continue" : "Sign up to save and manage subnet history"}
             </p>
           </div>
 
