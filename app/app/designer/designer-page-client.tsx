@@ -53,6 +53,7 @@ export function DesignerPageClient() {
   const [quota, setQuota] = useState<QuotaSnapshot | null>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [generationTimeSeconds, setGenerationTimeSeconds] = useState(0)
+  const isLimitReached = quota !== null && quota.remaining <= 0
 
   useEffect(() => {
     const loadQuota = async () => {
@@ -164,11 +165,17 @@ export function DesignerPageClient() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {quota ? (
-              <div className="rounded-lg border border-border bg-secondary/30 p-3 text-sm text-muted-foreground">
-                Remaining designs: <span className="font-medium text-foreground">{quota.remaining}</span> / {quota.limit} in {quota.windowHours}h
-              </div>
-            ) : null}
+            <div className="min-h-13">
+              {quota ? (
+                <div className="rounded-lg border border-border bg-secondary/30 p-3 text-sm text-muted-foreground">
+                  Remaining designs: <span className="font-medium text-foreground">{quota.remaining}</span> / {quota.limit} in {quota.windowHours}h
+                </div>
+              ) : (
+                <div className="rounded-lg border border-border bg-secondary/30 p-3">
+                  <Skeleton className="h-5 w-56" />
+                </div>
+              )}
+            </div>
             <FieldGroup>
               <Field>
                 <FieldLabel htmlFor="designer-prompt">Prompt</FieldLabel>
@@ -187,10 +194,10 @@ export function DesignerPageClient() {
                 type="button"
                 className="gap-2"
                 onClick={generatePlan}
-                disabled={isGenerating || (!!quota && quota.remaining <= 0)}
+                disabled={isGenerating || isLimitReached}
               >
                 <Wand2 className="h-4 w-4" />
-                {isGenerating ? "Generating..." : "Generate design"}
+                {isGenerating ? "Generating..." : isLimitReached ? "Limit reached" : "Generate design"}
               </Button>
             </FieldGroup>
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
