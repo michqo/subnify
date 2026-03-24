@@ -9,37 +9,37 @@ const features = [
   {
     icon: Calculator,
     title: "VLSM Calculator",
-    description: "Allocate subnet blocks from host requirements using a proper largest-first strategy. No overlaps. No guesswork.",
+    description: "Largest-first subnet allocation from host requirements.",
   },
   {
     icon: Network,
     title: "Network Visualization",
-    description: "See exactly how each subnet fits into the parent network with a clear visual map of your address space.",
+    description: "See how each subnet fits inside the parent network.",
   },
   {
     icon: Sparkles,
     title: "AI Designer",
-    description: "Generate structured subnet plans from intent and constraints, then refine them instantly in the calculator.",
+    description: "Generate draft subnet plans from requirements and refine quickly.",
   },
   {
     icon: Zap,
     title: "Instant Results",
-    description: "All calculations run instantly in your browser, so you can iterate quickly without workflow friction.",
+    description: "Browser-based calculations with immediate feedback.",
   },
   {
     icon: Shield,
     title: "RFC-Compliant Output",
-    description: "Work with standard CIDR notation and private address ranges based on RFC 1918.",
+    description: "Standard CIDR output with RFC 1918 private ranges.",
   },
   {
     icon: Download,
     title: "Export Ready",
-    description: "Export subnet plans for documentation, handoff, or review.",
+    description: "Export plans for handoff and documentation.",
   },
   {
     icon: GitBranch,
     title: "Subnet Hierarchy",
-    description: "Understand parent-child relationships across your allocations with a structured hierarchy view.",
+    description: "Clear parent-child view of your subnet allocation.",
   },
 ]
 
@@ -60,21 +60,21 @@ export function FeaturesSection() {
             Focused subnet planning
           </p>
           <p className="mt-4 text-pretty text-muted-foreground">
-            Plan IPv4 networks with a workflow built for real-world VLSM design — faster, clearer, and easier to validate.
+            Practical tools for fast, clear IPv4 subnet planning.
           </p>
         </motion.div>
 
         <motion.div variants={itemVariants} className="mx-auto mt-16 grid max-w-5xl gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((feature) => (
-            <motion.div key={feature.title} variants={itemVariants}>
-              <Card className="border-border bg-card transition-colors hover:border-primary/50">
+            <motion.div key={feature.title} variants={itemVariants} className="h-full">
+              <Card className="flex h-full flex-col border-border bg-card transition-colors hover:border-primary/50">
                 <CardHeader>
                   <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                     <feature.icon className="h-5 w-5 text-primary" />
                   </div>
                   <CardTitle className="text-lg">{feature.title}</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex-1">
                   <CardDescription className="text-sm text-muted-foreground">
                     {feature.description}
                   </CardDescription>

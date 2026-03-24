@@ -47,7 +47,7 @@ export function HeroSection() {
           </motion.h1>
           
           <motion.p variants={itemVariants} className="mx-auto mt-6 max-w-2xl text-pretty text-lg text-muted-foreground sm:text-xl">
-            Plan VLSM networks, avoid overlapping allocations, and see your address space clearly before you deploy.
+            Plan VLSM networks fast, avoid overlaps, and ship cleaner subnet designs.
           </motion.p>
           
           <motion.div variants={itemVariants} className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
