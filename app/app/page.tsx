@@ -7,11 +7,27 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Trash2, Calculator, Download, Copy, Check, ZoomIn, ZoomOut } from "lucide-react"
+import { Plus, Trash2, Calculator, Download, Copy, Check, ZoomIn, ZoomOut, GripVertical } from "lucide-react"
 import { motion, type Variants } from "framer-motion"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
+import {
+  DndContext,
+  PointerSensor,
+  KeyboardSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 
 import { calculateVlsm, totalAddressesFromCidr, type VlsmAllocation } from "@/lib/vlsm"
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
@@ -57,6 +73,77 @@ type SaveCalculationOptions = {
   title?: string | null
   calculationId?: string | null
   successMessage?: string
+}
+
+type SortableSubnetRowProps = {
+  subnet: SubnetInput
+  index: number
+  subnetCount: number
+  onUpdateSubnet: (id: number, field: "name" | "hosts", value: string) => void
+  onRemoveSubnet: (id: number) => void
+}
+
+function SortableSubnetRow({
+  subnet,
+  index,
+  subnetCount,
+  onUpdateSubnet,
+  onRemoveSubnet,
+}: SortableSubnetRowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: subnet.id })
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-3 rounded-lg border border-border bg-secondary/30 p-3 ${
+        isDragging ? "z-10 opacity-80 shadow-md" : ""
+      }`}
+    >
+      <button
+        type="button"
+        className="shrink-0 text-muted-foreground hover:text-foreground"
+        aria-label={`Reorder ${subnet.name}`}
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-primary/5 text-xs font-medium text-primary">
+        {index + 1}
+      </span>
+      <Input
+        value={subnet.name}
+        onChange={(event) => onUpdateSubnet(subnet.id, "name", event.target.value)}
+        placeholder="Subnet name"
+        className="h-9 flex-1 border-border bg-card"
+      />
+      <div className="flex items-center gap-2">
+        <Input
+          type="number"
+          value={subnet.hosts}
+          onChange={(event) => onUpdateSubnet(subnet.id, "hosts", event.target.value)}
+          placeholder="Hosts"
+          className="h-9 w-24 border-border bg-card font-mono"
+        />
+        <span className="text-sm text-muted-foreground">hosts</span>
+      </div>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => onRemoveSubnet(subnet.id)}
+        disabled={subnetCount === 1}
+        className="shrink-0 text-muted-foreground hover:text-destructive"
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+    </div>
+  )
 }
 
 const COLORS = [
@@ -116,6 +203,7 @@ function CalculatorPageContent() {
   const addSubnet = useSubnetPlanStore((state) => state.addSubnet)
   const removeSubnet = useSubnetPlanStore((state) => state.removeSubnet)
   const updateSubnet = useSubnetPlanStore((state) => state.updateSubnet)
+  const moveSubnet = useSubnetPlanStore((state) => state.moveSubnet)
   const replacePlan = useSubnetPlanStore((state) => state.replacePlan)
   const clearAiMetadata = useSubnetPlanStore((state) => state.clearAiMetadata)
   const resetPlan = useSubnetPlanStore((state) => state.resetPlan)
@@ -173,6 +261,24 @@ function CalculatorPageContent() {
   const replaceToCurrentView = useCallback(() => {
     router.replace(buildAppUrl(resolveViewFromQuery()), { scroll: false })
   }, [router, buildAppUrl, resolveViewFromQuery])
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
+  const handleSubnetDragEnd = useCallback(
+    ({ active, over }: DragEndEvent) => {
+      if (!over || active.id === over.id) {
+        return
+      }
+
+      moveSubnet(Number(active.id), Number(over.id))
+    },
+    [moveSubnet]
+  )
 
   const saveCalculation = useCallback(async (
     calculatedResults: CalculatedSubnet[],
@@ -658,44 +764,22 @@ function CalculatorPageContent() {
                       </Button>
                     </div>
 
-                    <div className="space-y-2">
-                      {subnets.map((subnet, index) => (
-                        <div
-                          key={subnet.id}
-                          className="flex items-center gap-3 rounded-lg border border-border bg-secondary/30 p-3"
-                        >
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-primary/5 text-xs font-medium text-primary">
-                            {index + 1}
-                          </span>
-                          <Input
-                            value={subnet.name}
-                            onChange={(e) => updateSubnet(subnet.id, "name", e.target.value)}
-                            placeholder="Subnet name"
-                            className="h-9 flex-1 border-border bg-card"
-                          />
-                          <div className="flex items-center gap-2">
-                            <Input
-                              type="number"
-                              value={subnet.hosts}
-                              onChange={(e) => updateSubnet(subnet.id, "hosts", e.target.value)}
-                              placeholder="Hosts"
-                              className="h-9 w-24 border-border bg-card font-mono"
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleSubnetDragEnd}>
+                      <SortableContext items={subnets.map((subnet) => subnet.id)} strategy={verticalListSortingStrategy}>
+                        <div className="space-y-2">
+                          {subnets.map((subnet, index) => (
+                            <SortableSubnetRow
+                              key={subnet.id}
+                              subnet={subnet}
+                              index={index}
+                              subnetCount={subnets.length}
+                              onUpdateSubnet={updateSubnet}
+                              onRemoveSubnet={removeSubnet}
                             />
-                            <span className="text-sm text-muted-foreground">hosts</span>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeSubnet(subnet.id)}
-                            disabled={subnets.length === 1}
-                            className="shrink-0 text-muted-foreground hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </SortableContext>
+                    </DndContext>
                     <FieldDescription>Each entry defines a subnet name and required hosts.</FieldDescription>
                   </Field>
 

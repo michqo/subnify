@@ -15,6 +15,7 @@ type SubnetPlanState = {
   addSubnet: () => void
   removeSubnet: (id: number) => void
   updateSubnet: (id: number, field: "name" | "hosts", value: string) => void
+  moveSubnet: (activeId: number, overId: number) => void
   replacePlan: (plan: ReplacePlanInput) => void
   clearAiMetadata: () => void
   resetPlan: () => void
@@ -72,6 +73,29 @@ export const useSubnetPlanStore = create<SubnetPlanState>()((set, get) => ({
           }
         : subnet
     )
+
+    set({
+      subnets: nextSubnets,
+      sourceType: currentSourceType === "ai_design" ? "ai_design" : "manual",
+    })
+  },
+  moveSubnet: (activeId, overId) => {
+    if (activeId === overId) {
+      return
+    }
+
+    const current = get().subnets
+    const currentSourceType = get().sourceType
+    const activeIndex = current.findIndex((subnet) => subnet.id === activeId)
+    const overIndex = current.findIndex((subnet) => subnet.id === overId)
+
+    if (activeIndex < 0 || overIndex < 0) {
+      return
+    }
+
+    const nextSubnets = [...current]
+    const [moved] = nextSubnets.splice(activeIndex, 1)
+    nextSubnets.splice(overIndex, 0, moved)
 
     set({
       subnets: nextSubnets,
