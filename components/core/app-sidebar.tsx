@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import {
   Network,
-  Calculator,
   GitBranch,
   Sparkles,
   History,
@@ -37,8 +36,7 @@ import {
 import { useAuth } from "@/components/core/auth-provider"
 
 const navigation = [
-  { name: "Calculator", href: "/app", icon: Calculator },
-  { name: "Visualizer", href: "/app/visualizer", icon: GitBranch },
+  { name: "Planner", href: "/app", icon: GitBranch },
 ]
 
 export function AppSidebar() {

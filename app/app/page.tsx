@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Trash2, Calculator, Download, Copy, Check } from "lucide-react"
+import { Plus, Trash2, Calculator, Download, Copy, Check, ZoomIn, ZoomOut } from "lucide-react"
 import { AnimatePresence, motion, type Variants } from "framer-motion"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -16,6 +16,8 @@ import { calculateVlsm, totalAddressesFromCidr, type VlsmAllocation } from "@/li
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useAuth } from "@/components/core/auth-provider"
 import { parseSubnetInputArray, parseVlsmAllocations, type CalculationInsert } from "@/lib/history"
+import { useSubnetPlanStore } from "@/lib/state/subnet-plan-store"
+import type { PlanSource, SubnetInput } from "@/lib/state/subnet-plan-types"
 
 const pageVariants: Variants = {
   hidden: { opacity: 0 },
@@ -38,11 +40,7 @@ const sectionVariants: Variants = {
   },
 }
 
-interface Subnet {
-  id: number
-  name: string
-  hosts: number
-}
+type Subnet = SubnetInput
 
 interface AiDesignedSubnet {
   name?: string
@@ -64,51 +62,107 @@ interface StoredAiDesignPayload {
 
 type CalculatedSubnet = VlsmAllocation
 
+const COLORS = [
+  {
+    barBg: "bg-chart-1/60 dark:bg-chart-1/40",
+    cardBg: "bg-chart-1/25 dark:bg-chart-1/20",
+    border: "border-chart-1",
+    dot: "bg-chart-1",
+  },
+  {
+    barBg: "bg-chart-2/60 dark:bg-chart-2/40",
+    cardBg: "bg-chart-2/25 dark:bg-chart-2/20",
+    border: "border-chart-2",
+    dot: "bg-chart-2",
+  },
+  {
+    barBg: "bg-chart-3/60 dark:bg-chart-3/40",
+    cardBg: "bg-chart-3/25 dark:bg-chart-3/20",
+    border: "border-chart-3",
+    dot: "bg-chart-3",
+  },
+  {
+    barBg: "bg-chart-4/60 dark:bg-chart-4/40",
+    cardBg: "bg-chart-4/25 dark:bg-chart-4/20",
+    border: "border-chart-4",
+    dot: "bg-chart-4",
+  },
+  {
+    barBg: "bg-chart-5/60 dark:bg-chart-5/40",
+    cardBg: "bg-chart-5/25 dark:bg-chart-5/20",
+    border: "border-chart-5",
+    dot: "bg-chart-5",
+  },
+  {
+    barBg: "bg-primary/60 dark:bg-primary/40",
+    cardBg: "bg-primary/20 dark:bg-primary/15",
+    border: "border-primary",
+    dot: "bg-primary",
+  },
+] as const
+
 function CalculatorPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = useMemo(() => createSupabaseBrowserClient(), [])
   const { isAuthenticated, isAuthLoading, user } = useAuth()
 
-  const [baseNetwork, setBaseNetwork] = useState("192.168.1.0")
-  const [baseCidr, setBaseCidr] = useState("24")
-  const [subnets, setSubnets] = useState<Subnet[]>([
-    { id: 1, name: "LAN A", hosts: 50 },
-    { id: 2, name: "LAN B", hosts: 25 },
-    { id: 3, name: "LAN C", hosts: 10 },
-  ])
+  const baseNetwork = useSubnetPlanStore((state) => state.baseNetwork)
+  const baseCidr = useSubnetPlanStore((state) => state.baseCidr)
+  const subnets = useSubnetPlanStore((state) => state.subnets)
+  const sourceType = useSubnetPlanStore((state) => state.sourceType)
+  const aiPrompt = useSubnetPlanStore((state) => state.aiPrompt)
+  const aiRationale = useSubnetPlanStore((state) => state.aiRationale)
+  const aiTitle = useSubnetPlanStore((state) => state.aiTitle)
+  const setBaseNetwork = useSubnetPlanStore((state) => state.setBaseNetwork)
+  const setBaseCidr = useSubnetPlanStore((state) => state.setBaseCidr)
+  const addSubnet = useSubnetPlanStore((state) => state.addSubnet)
+  const removeSubnet = useSubnetPlanStore((state) => state.removeSubnet)
+  const updateSubnet = useSubnetPlanStore((state) => state.updateSubnet)
+  const replacePlan = useSubnetPlanStore((state) => state.replacePlan)
+  const clearAiMetadata = useSubnetPlanStore((state) => state.clearAiMetadata)
+  const resetPlan = useSubnetPlanStore((state) => state.resetPlan)
   const [results, setResults] = useState<CalculatedSubnet[]>([])
   const [copied, setCopied] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [restoreMessage, setRestoreMessage] = useState<string | null>(null)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [pendingAiPrompt, setPendingAiPrompt] = useState<string | null>(null)
-  const [pendingAiRationale, setPendingAiRationale] = useState<string | null>(null)
+  const [zoom, setZoom] = useState(1)
+  const [selectedSubnet, setSelectedSubnet] = useState<number | null>(null)
+  const [activeView, setActiveView] = useState<"table" | "cards" | "visualizer">("table")
 
-  const addSubnet = () => {
-    const newId = Math.max(...subnets.map((s) => s.id), 0) + 1
-    const suffix = newId <= 26 ? String.fromCharCode(64 + newId) : `${newId}`
-    setSubnets([...subnets, { id: newId, name: `LAN ${suffix}`, hosts: 10 }])
-  }
-
-  const removeSubnet = (id: number) => {
-    if (subnets.length > 1) {
-      setSubnets(subnets.filter((s) => s.id !== id))
+  const buildAppUrl = useCallback((view?: "table" | "cards" | "visualizer") => {
+    if (!view || view === "table") {
+      return "/app"
     }
-  }
 
-  const updateSubnet = (id: number, field: "name" | "hosts", value: string) => {
-    setSubnets(
-      subnets.map((s) => (s.id === id ? { ...s, [field]: field === "hosts" ? parseInt(value) || 0 : value } : s))
-    )
-  }
+    return `/app?view=${view}`
+  }, [])
+
+  const resolveViewFromQuery = useCallback((): "table" | "cards" | "visualizer" => {
+    const queryView = searchParams.get("view")
+    if (queryView === "cards" || queryView === "visualizer") {
+      return queryView
+    }
+    return "table"
+  }, [searchParams])
+
+  useEffect(() => {
+    setActiveView(resolveViewFromQuery())
+  }, [resolveViewFromQuery])
+
+  const handleViewChange = useCallback((value: string) => {
+    const nextView = value === "cards" || value === "visualizer" ? value : "table"
+    setActiveView(nextView)
+    router.replace(buildAppUrl(nextView), { scroll: false })
+  }, [buildAppUrl, router])
 
   const saveCalculation = useCallback(async (
     calculatedResults: CalculatedSubnet[],
     snapshot: { baseNetwork: string; baseCidr: string; subnets: Subnet[] },
     options?: {
-      sourceType?: "manual" | "ai_design"
+      sourceType?: PlanSource
       aiPrompt?: string | null
       aiRationale?: string | null
       title?: string | null
@@ -128,7 +182,7 @@ function CalculatorPageContent() {
       typeof options?.title === "string" && options.title.trim().length > 0 ? options.title.trim() : null
     const payload: CalculationInsert = {
       title: normalizedTitle ?? `${snapshot.baseNetwork}/${snapshot.baseCidr} (${snapshot.subnets.length} subnets)`,
-      source_type: options?.sourceType ?? "manual",
+      source_type: options?.sourceType === "ai_design" ? "ai_design" : "manual",
       ai_prompt: options?.aiPrompt ?? null,
       ai_rationale: options?.aiRationale ?? null,
       base_network: snapshot.baseNetwork,
@@ -160,13 +214,12 @@ function CalculatorPageContent() {
     const calculatedResults = calculateVlsm(baseNetwork, subnets)
     setResults(calculatedResults)
     void saveCalculation(calculatedResults, { baseNetwork, baseCidr, subnets }, {
-      sourceType: pendingAiPrompt ? "ai_design" : "manual",
-      aiPrompt: pendingAiPrompt,
-      aiRationale: pendingAiRationale,
-      title: null,
+      sourceType,
+      aiPrompt,
+      aiRationale,
+      title: aiTitle,
     })
-    setPendingAiPrompt(null)
-    setPendingAiRationale(null)
+    clearAiMetadata()
   }
 
   useEffect(() => {
@@ -181,7 +234,7 @@ function CalculatorPageContent() {
 
     if (!rawPlan) {
       setRestoreMessage("No AI design found. Generate one from the Designer tab.")
-      router.replace("/app", { scroll: false })
+      router.replace(buildAppUrl(resolveViewFromQuery()), { scroll: false })
       return
     }
 
@@ -208,7 +261,7 @@ function CalculatorPageContent() {
 
       if (designedSubnets.length === 0) {
         setRestoreMessage("Generated design was empty. Please try a different prompt.")
-        router.replace("/app", { scroll: false })
+        router.replace(buildAppUrl(resolveViewFromQuery()), { scroll: false })
         return
       }
 
@@ -218,21 +271,24 @@ function CalculatorPageContent() {
           : "192.168.0.0"
       const nextBaseCidr = Number.isFinite(Number(parsedPlan.baseCidr)) ? String(parsedPlan.baseCidr) : "24"
 
-      setBaseNetwork(nextBaseNetwork)
-      setBaseCidr(nextBaseCidr)
-      setSubnets(designedSubnets)
+      replacePlan({
+        baseNetwork: nextBaseNetwork,
+        baseCidr: nextBaseCidr,
+        subnets: designedSubnets,
+        sourceType: "ai_design",
+        aiPrompt,
+        aiRationale:
+          typeof parsedPlan.rationale === "string" && parsedPlan.rationale.trim().length > 0
+            ? parsedPlan.rationale
+            : null,
+        aiTitle: typeof parsedPlan.title === "string" ? parsedPlan.title : null,
+      })
 
       const calculated = calculateVlsm(nextBaseNetwork, designedSubnets)
       setResults(calculated)
       setSaveMessage(null)
       setSaveError(null)
       setRestoreMessage("Applied AI-generated design.")
-      setPendingAiPrompt(aiPrompt)
-      setPendingAiRationale(
-        typeof parsedPlan.rationale === "string" && parsedPlan.rationale.trim().length > 0
-          ? parsedPlan.rationale
-          : null
-      )
       const aiGeneratedTitle = typeof parsedPlan.title === "string" ? parsedPlan.title : null
 
       void saveCalculation(calculated, { baseNetwork: nextBaseNetwork, baseCidr: nextBaseCidr, subnets: designedSubnets }, {
@@ -247,9 +303,9 @@ function CalculatorPageContent() {
     } catch {
       setRestoreMessage("Could not parse AI design. Please generate again.")
     } finally {
-      router.replace("/app", { scroll: false })
+      router.replace(buildAppUrl(resolveViewFromQuery()), { scroll: false })
     }
-  }, [router, searchParams, isAuthenticated, isAuthLoading, user, saveCalculation])
+  }, [router, searchParams, isAuthenticated, isAuthLoading, user, saveCalculation, buildAppUrl, resolveViewFromQuery, replacePlan])
 
   useEffect(() => {
     const historyId = searchParams.get("history")
@@ -281,30 +337,33 @@ function CalculatorPageContent() {
         hosts: subnet.hosts,
       }))
 
-      setBaseNetwork(String(data.base_network ?? "192.168.1.0"))
-      setBaseCidr(String(data.base_cidr ?? "24"))
+      const restoredBaseNetwork = String(data.base_network ?? "192.168.1.0")
+      const restoredBaseCidr = String(data.base_cidr ?? "24")
 
-      if (restoredSubnets.length > 0) {
-        setSubnets(restoredSubnets)
-      }
+      replacePlan({
+        baseNetwork: restoredBaseNetwork,
+        baseCidr: restoredBaseCidr,
+        subnets: restoredSubnets.length > 0 ? restoredSubnets : subnets,
+        sourceType: "history",
+      })
 
       const restoredResults = parseVlsmAllocations(data.result_subnets)
 
       if (restoredResults.length > 0) {
         setResults(restoredResults)
       } else {
-        setResults(calculateVlsm(String(data.base_network ?? "192.168.1.0"), restoredSubnets))
+        setResults(calculateVlsm(restoredBaseNetwork, restoredSubnets))
       }
 
       setRestoreMessage("Restored calculation from history.")
-      router.replace("/app", { scroll: false })
+      router.replace(buildAppUrl(resolveViewFromQuery()), { scroll: false })
     }
 
     void restoreFromHistory()
     return () => {
       ignore = true
     }
-  }, [isAuthenticated, router, searchParams, supabase])
+  }, [isAuthenticated, router, searchParams, supabase, buildAppUrl, resolveViewFromQuery, replacePlan, subnets])
 
   useEffect(() => {
     const emailConfirmedFromQuery = searchParams.get("emailConfirmed") === "1"
@@ -323,11 +382,11 @@ function CalculatorPageContent() {
     setRestoreMessage("Email confirmed. Your account is ready.")
 
     if (typeof window !== "undefined") {
-      window.history.replaceState({}, "", "/app")
+      window.history.replaceState({}, "", buildAppUrl(resolveViewFromQuery()))
     } else {
-      router.replace("/app", { scroll: false })
+      router.replace(buildAppUrl(resolveViewFromQuery()), { scroll: false })
     }
-  }, [router, searchParams])
+  }, [router, searchParams, buildAppUrl, resolveViewFromQuery])
 
   useEffect(() => {
     if (!saveMessage && !saveError) {
@@ -471,18 +530,15 @@ function CalculatorPageContent() {
   }
 
   const resetForm = () => {
-    setBaseNetwork("192.168.1.0")
-    setBaseCidr("24")
-    setSubnets([
-      { id: 1, name: "LAN A", hosts: 50 },
-      { id: 2, name: "LAN B", hosts: 25 },
-      { id: 3, name: "LAN C", hosts: 10 },
-    ])
+    resetPlan()
+    clearAiMetadata()
     setResults([])
   }
 
   const totalUsable = results.reduce((acc, r) => acc + r.usableHosts, 0)
   const totalRequired = results.reduce((acc, r) => acc + r.requiredHosts, 0)
+  const totalAddresses = totalAddressesFromCidr(baseCidr)
+  const allocatedAddresses = results.reduce((acc, r) => acc + r.blockSize, 0)
 
   return (
     <motion.div
@@ -642,8 +698,7 @@ function CalculatorPageContent() {
           </motion.div>
 
           {/* Results Section */}
-          {results.length > 0 && (
-            <motion.div variants={sectionVariants}>
+          <motion.div variants={sectionVariants}>
               <Card className="border-border">
               <CardHeader className="flex flex-row items-center justify-between pb-4">
                 <div className="flex items-center gap-3">
@@ -651,21 +706,22 @@ function CalculatorPageContent() {
                   <Badge variant="secondary">{results.length} subnets</Badge>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={copyResults} className="gap-1.5">
+                  <Button variant="outline" size="sm" onClick={copyResults} className="gap-1.5" disabled={results.length === 0}>
                     {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                     {copied ? "Copied" : "Copy"}
                   </Button>
-                  <Button variant="outline" size="sm" className="gap-1.5" onClick={exportPdf} disabled={exporting}>
+                  <Button variant="outline" size="sm" className="gap-1.5" onClick={exportPdf} disabled={exporting || results.length === 0}>
                     <Download className="h-3.5 w-3.5" />
                     {exporting ? "Exporting..." : "Export"}
                   </Button>
                 </div>
               </CardHeader>
               <CardContent>
-                <Tabs defaultValue="table" className="w-full">
+                <Tabs value={activeView} onValueChange={handleViewChange} className="w-full">
                   <TabsList className="mb-4">
                     <TabsTrigger value="table">Table View</TabsTrigger>
                     <TabsTrigger value="cards">Card View</TabsTrigger>
+                    <TabsTrigger value="visualizer">Visualizer</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="table" className="mt-0">
@@ -683,95 +739,244 @@ function CalculatorPageContent() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
-                          {results.map((result, index) => (
-                            <tr key={index} className="group">
-                              <td className="py-3 font-medium">{result.name}</td>
-                              <td className="py-3 font-mono text-primary">{result.networkAddress}</td>
-                              <td className="py-3">
-                                <Badge variant="outline">/{result.cidr}</Badge>
+                          {results.length === 0 ? (
+                            <tr>
+                              <td colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                                Run a calculation to populate the table.
                               </td>
-                              <td className="py-3 font-mono text-muted-foreground">{result.subnetMask}</td>
-                              <td className="py-3 font-mono text-xs">
-                                {result.firstHost} - {result.lastHost}
-                              </td>
-                              <td className="py-3 font-mono text-muted-foreground">{result.broadcast}</td>
-                              <td className="py-3 text-right font-semibold text-primary">{result.usableHosts}</td>
                             </tr>
-                          ))}
+                          ) : (
+                            results.map((result, index) => (
+                              <tr key={index} className="group">
+                                <td className="py-3 font-medium">{result.name}</td>
+                                <td className="py-3 font-mono text-primary">{result.networkAddress}</td>
+                                <td className="py-3">
+                                  <Badge variant="outline">/{result.cidr}</Badge>
+                                </td>
+                                <td className="py-3 font-mono text-muted-foreground">{result.subnetMask}</td>
+                                <td className="py-3 font-mono text-xs">
+                                  {result.firstHost} - {result.lastHost}
+                                </td>
+                                <td className="py-3 font-mono text-muted-foreground">{result.broadcast}</td>
+                                <td className="py-3 text-right font-semibold text-primary">{result.usableHosts}</td>
+                              </tr>
+                            ))
+                          )}
                         </tbody>
                       </table>
                     </div>
                   </TabsContent>
 
                   <TabsContent value="cards" className="mt-0">
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                      {results.map((result, index) => (
-                        <motion.div
-                          key={index}
-                          initial={{ opacity: 0, y: 4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.14, ease: "easeOut", delay: index * 0.02 }}
-                          className="rounded-lg border border-border bg-secondary/30 p-4"
-                        >
-                          <div className="mb-3 flex items-center justify-between">
-                            <span className="font-medium">{result.name}</span>
-                            <Badge variant="secondary">/{result.cidr}</Badge>
+                    {results.length === 0 ? (
+                      <div className="rounded-lg border border-dashed border-border bg-secondary/20 p-6 text-center text-sm text-muted-foreground">
+                        Run a calculation to view subnet cards.
+                      </div>
+                    ) : (
+                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {results.map((result, index) => (
+                          <motion.div
+                            key={index}
+                            initial={{ opacity: 0, y: 4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.14, ease: "easeOut", delay: index * 0.02 }}
+                            className="rounded-lg border border-border bg-secondary/30 p-4"
+                          >
+                            <div className="mb-3 flex items-center justify-between">
+                              <span className="font-medium">{result.name}</span>
+                              <Badge variant="secondary">/{result.cidr}</Badge>
+                            </div>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Network:</span>
+                                <code className="font-mono text-primary">{result.networkAddress}</code>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Mask:</span>
+                                <code className="font-mono">{result.subnetMask}</code>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">First Host:</span>
+                                <code className="font-mono">{result.firstHost}</code>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Last Host:</span>
+                                <code className="font-mono">{result.lastHost}</code>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Broadcast:</span>
+                                <code className="font-mono">{result.broadcast}</code>
+                              </div>
+                              <div className="mt-3 flex justify-between border-t border-border pt-3">
+                                <span className="text-muted-foreground">Usable Hosts:</span>
+                                <span className="font-semibold text-primary">{result.usableHosts}</span>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="visualizer" className="mt-0 space-y-6">
+                    {results.length === 0 ? (
+                      <div className="rounded-lg border border-dashed border-border bg-secondary/20 p-6 text-center text-sm text-muted-foreground">
+                        Run a calculation to open the visualizer view.
+                      </div>
+                    ) : null}
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={results.length === 0}
+                        onClick={() => setZoom(Math.max(0.5, zoom - 0.25))}
+                      >
+                        <ZoomOut className="h-4 w-4" />
+                      </Button>
+                      <span className="w-12 text-center text-sm text-muted-foreground">{(zoom * 100).toFixed(0)}%</span>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={results.length === 0}
+                        onClick={() => setZoom(Math.min(2, zoom + 0.25))}
+                      >
+                        <ZoomIn className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-muted-foreground">Linear Address Space</p>
+                      <motion.div
+                        className="relative h-16 overflow-hidden rounded-lg border border-border bg-muted/50 dark:bg-secondary/30"
+                        style={{ minWidth: `${100 * zoom}%` }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.16, ease: "easeOut" }}
+                      >
+                        {results.map((result, index) => {
+                          const leftPercent = (result.startOffset / totalAddresses) * 100
+                          const widthPercent = (result.blockSize / totalAddresses) * 100
+                          return (
+                            <div
+                              key={index}
+                              className={`absolute top-0 h-full cursor-pointer border-r transition-all ${COLORS[index % COLORS.length].barBg} ${COLORS[index % COLORS.length].border} ${
+                                selectedSubnet === subnets.find((s) => s.name === result.name)?.id
+                                  ? "ring-2 ring-primary ring-offset-1 ring-offset-background"
+                                  : ""
+                              }`}
+                              style={{ left: `${leftPercent}%`, width: `${widthPercent}%` }}
+                              onClick={() => {
+                                const subnet = subnets.find((s) => s.name === result.name)
+                                if (subnet) setSelectedSubnet(subnet.id === selectedSubnet ? null : subnet.id)
+                              }}
+                            >
+                              {widthPercent > 10 ? (
+                                <div className="flex h-full flex-col items-center justify-center p-1">
+                                  <span className="truncate text-xs font-semibold text-white drop-shadow-sm">{result.name}</span>
+                                  <span className="text-[11px] text-white/95 drop-shadow-sm">/{result.cidr}</span>
+                                </div>
+                              ) : widthPercent > 3 ? (
+                                <div className="flex h-full items-center justify-center p-1">
+                                  <span className="text-[10px] font-semibold text-white drop-shadow-sm">/{result.cidr}</span>
+                                </div>
+                              ) : null}
+                            </div>
+                          )
+                        })}
+                        {allocatedAddresses < totalAddresses && (
+                          <div
+                            className="absolute top-0 flex h-full items-center justify-center bg-muted/65 dark:bg-muted/20"
+                            style={{
+                              left: `${(allocatedAddresses / totalAddresses) * 100}%`,
+                              width: `${((totalAddresses - allocatedAddresses) / totalAddresses) * 100}%`,
+                            }}
+                          >
+                            <span className="text-xs text-foreground/80">Unallocated</span>
                           </div>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Network:</span>
-                              <code className="font-mono text-primary">{result.networkAddress}</code>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Mask:</span>
-                              <code className="font-mono">{result.subnetMask}</code>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">First Host:</span>
-                              <code className="font-mono">{result.firstHost}</code>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Last Host:</span>
-                              <code className="font-mono">{result.lastHost}</code>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Broadcast:</span>
-                              <code className="font-mono">{result.broadcast}</code>
-                            </div>
-                            <div className="mt-3 flex justify-between border-t border-border pt-3">
-                              <span className="text-muted-foreground">Usable Hosts:</span>
-                              <span className="font-semibold text-primary">{result.usableHosts}</span>
-                            </div>
+                        )}
+                      </motion.div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-muted-foreground">Subnet Hierarchy</p>
+                      <div className="rounded-lg border border-border bg-secondary/20 p-4">
+                        <div className="flex items-center gap-3 rounded-md border border-primary/50 bg-primary/10 p-3">
+                          <div className="h-3 w-3 rounded-full bg-primary" />
+                          <div className="flex-1">
+                            <p className="font-mono text-sm font-medium">
+                              {baseNetwork}/{baseCidr}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Root Network - {totalAddresses.toLocaleString()} total addresses
+                            </p>
                           </div>
-                        </motion.div>
-                      ))}
+                          <Badge variant="outline" className="text-xs">
+                            /{baseCidr}
+                          </Badge>
+                        </div>
+
+                        <div className="ml-6 mt-2 space-y-2 border-l border-border pl-6">
+                          {results.map((result, index) => {
+                            const subnet = subnets.find((s) => s.name === result.name)
+                            const isSelected = selectedSubnet === subnet?.id
+                            return (
+                              <div
+                                key={index}
+                                className={`flex cursor-pointer items-center gap-3 rounded-md border p-3 transition-all ${
+                                  isSelected
+                                    ? `${COLORS[index % COLORS.length].border} ring-2 ring-primary`
+                                    : `${COLORS[index % COLORS.length].border} ${COLORS[index % COLORS.length].cardBg} hover:ring-1 hover:ring-primary/50`
+                                }`}
+                                onClick={() => {
+                                  if (subnet) setSelectedSubnet(subnet.id === selectedSubnet ? null : subnet.id)
+                                }}
+                              >
+                                <div className={`h-3 w-3 rounded-full ${COLORS[index % COLORS.length].dot}`} />
+                                <div className="flex-1">
+                                  <p className="font-mono text-sm font-medium">
+                                    {result.networkAddress}/{result.cidr}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {result.name} - {result.usableHosts} usable hosts
+                                  </p>
+                                </div>
+                                <Badge variant="outline" className="text-xs">
+                                  /{result.cidr}
+                                </Badge>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
                     </div>
                   </TabsContent>
                 </Tabs>
 
-                {/* Summary */}
-                <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-lg bg-secondary/50 p-4">
-                  <div className="flex items-center gap-6">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total Required</p>
-                      <p className="text-xl font-semibold">{totalRequired}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total Allocated</p>
-                      <p className="text-xl font-semibold text-primary">{totalUsable}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Efficiency</p>
-                      <p className="text-xl font-semibold">
-                        {totalUsable > 0 ? ((totalRequired / totalUsable) * 100).toFixed(1) : 0}%
-                      </p>
+                {results.length > 0 ? (
+                  <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-lg bg-secondary/50 p-4">
+                    <div className="flex items-center gap-6">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Required</p>
+                        <p className="text-xl font-semibold">{totalRequired}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Allocated</p>
+                        <p className="text-xl font-semibold text-primary">{totalUsable}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Efficiency</p>
+                        <p className="text-xl font-semibold">
+                          {totalUsable > 0 ? ((totalRequired / totalUsable) * 100).toFixed(1) : 0}%
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                ) : null}
               </CardContent>
               </Card>
-            </motion.div>
-          )}
+          </motion.div>
         </div>
     </motion.div>
   )

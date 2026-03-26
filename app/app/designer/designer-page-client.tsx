@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useSubnetPlanStore } from "@/lib/state/subnet-plan-store"
 
 type DesignerSubnet = {
   name: string
@@ -21,11 +22,6 @@ type DesignerPlan = {
   title: string
   rationale: string
   subnets: DesignerSubnet[]
-}
-
-type StoredAiDesignPayload = {
-  prompt: string
-  plan: DesignerPlan
 }
 
 type QuotaSnapshot = {
@@ -46,6 +42,7 @@ function formatWaitTime(seconds: number): string {
 
 export function DesignerPageClient() {
   const router = useRouter()
+  const replacePlan = useSubnetPlanStore((state) => state.replacePlan)
   const [prompt, setPrompt] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -124,31 +121,45 @@ export function DesignerPageClient() {
   }
 
   const applyToCalculator = () => {
-    if (!plan || typeof window === "undefined") {
+    if (!plan) {
       return
     }
 
-    const payload: StoredAiDesignPayload = {
-      prompt,
-      plan,
-    }
-
-    window.sessionStorage.setItem("subnify_ai_plan", JSON.stringify(payload))
-    router.push("/app?aiDesign=1")
+    replacePlan({
+      baseNetwork: plan.baseNetwork ?? "192.168.0.0",
+      baseCidr: String(plan.baseCidr ?? 24),
+      subnets: plan.subnets.map((subnet, index) => ({
+        id: index + 1,
+        name: subnet.name,
+        hosts: subnet.hosts,
+      })),
+      sourceType: "ai_design",
+      aiPrompt: prompt,
+      aiRationale: plan.rationale,
+      aiTitle: plan.title,
+    })
+    router.push("/app")
   }
 
   const applyToVisualizer = () => {
-    if (!plan || typeof window === "undefined") {
+    if (!plan) {
       return
     }
 
-    const payload: StoredAiDesignPayload = {
-      prompt,
-      plan,
-    }
-
-    window.sessionStorage.setItem("subnify_ai_plan", JSON.stringify(payload))
-    router.push("/app/visualizer?aiDesign=1")
+    replacePlan({
+      baseNetwork: plan.baseNetwork ?? "192.168.0.0",
+      baseCidr: String(plan.baseCidr ?? 24),
+      subnets: plan.subnets.map((subnet, index) => ({
+        id: index + 1,
+        name: subnet.name,
+        hosts: subnet.hosts,
+      })),
+      sourceType: "ai_design",
+      aiPrompt: prompt,
+      aiRationale: plan.rationale,
+      aiTitle: plan.title,
+    })
+    router.push("/app?view=visualizer")
   }
 
   return (

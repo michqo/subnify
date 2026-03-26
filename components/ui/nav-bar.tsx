@@ -30,9 +30,7 @@ export function NavBar() {
   const { openAuthDialog, isAuthenticated, isAuthLoading, signOut, user } = useAuth()
 
   const appHeader = {
-    title: pathname.startsWith("/app/visualizer")
-      ? "Network Visualizer"
-      : pathname.startsWith("/app/designer")
+    title: pathname.startsWith("/app/designer")
         ? "AI Network Designer"
       : pathname.startsWith("/app/history")
         ? "Subnet History"
@@ -40,10 +38,8 @@ export function NavBar() {
           ? "Settings"
           : pathname.startsWith("/app/help")
             ? "Help"
-            : "Subnet Calculator",
-    description: pathname.startsWith("/app/visualizer")
-      ? "Visualize address space allocation"
-      : pathname.startsWith("/app/designer")
+            : "Subnet Planner",
+    description: pathname.startsWith("/app/designer")
         ? "Generate subnet plans from natural language"
       : pathname.startsWith("/app/history")
         ? "Review previous subnet plans"
@@ -51,7 +47,7 @@ export function NavBar() {
           ? "Manage your preferences"
           : pathname.startsWith("/app/help")
             ? "Get help using Subnify"
-            : "Create and review variable length subnet plans",
+            : "Calculate and visualize variable length subnet plans",
   }
 
   useEffect(() => {
