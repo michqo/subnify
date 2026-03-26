@@ -421,23 +421,12 @@ function CalculatorPageContent() {
       setPlanName(aiGeneratedTitle?.trim() ?? "")
       setActiveCloudPlanId(null)
       toast.info("Applied AI-generated design.")
-
-      void saveCalculation(calculated, { baseNetwork: nextBaseNetwork, baseCidr: nextBaseCidr, subnets: designedSubnets }, {
-        sourceType: "ai_design",
-        aiPrompt,
-        aiRationale:
-          typeof parsedPlan.rationale === "string" && parsedPlan.rationale.trim().length > 0
-            ? parsedPlan.rationale
-            : null,
-        title: aiGeneratedTitle,
-        successMessage: "AI design saved to cloud history.",
-      })
     } catch {
       toast.error("Could not parse AI design. Please generate again.")
     } finally {
       replaceToCurrentView()
     }
-  }, [shouldApplyAiDesign, saveCalculation, replaceToCurrentView, replacePlan])
+  }, [shouldApplyAiDesign, replaceToCurrentView, replacePlan])
 
   useEffect(() => {
     if (!historyIdFromQuery || !isAuthenticated) {
@@ -715,7 +704,6 @@ function CalculatorPageContent() {
                         onChange={(event) => setPlanName(event.target.value)}
                         placeholder="Branch office rollout"
                       />
-                      <FieldDescription>Name this plan before saving to cloud history.</FieldDescription>
                     </Field>
                   ) : null}
 

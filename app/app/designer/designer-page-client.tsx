@@ -1,14 +1,19 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Loader2, Sparkles, Wand2 } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useAuth } from "@/components/core/auth-provider"
+import { parseSubnetInputArray, type CalculationInsert } from "@/lib/history"
 import { useSubnetPlanStore } from "@/lib/state/subnet-plan-store"
+import { createSupabaseBrowserClient } from "@/lib/supabase/client"
+import { calculateVlsm } from "@/lib/vlsm"
 
 type DesignerSubnet = {
   name: string
@@ -42,11 +47,14 @@ function formatWaitTime(seconds: number): string {
 
 export function DesignerPageClient() {
   const router = useRouter()
+  const supabase = useMemo(() => createSupabaseBrowserClient(), [])
+  const { user } = useAuth()
   const replacePlan = useSubnetPlanStore((state) => state.replacePlan)
   const [prompt, setPrompt] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [plan, setPlan] = useState<DesignerPlan | null>(null)
+  const [savedPlanId, setSavedPlanId] = useState<string | null>(null)
   const [quota, setQuota] = useState<QuotaSnapshot | null>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [generationTimeSeconds, setGenerationTimeSeconds] = useState(0)
@@ -76,6 +84,55 @@ export function DesignerPageClient() {
     return () => clearInterval(interval)
   }, [isGenerating])
 
+  const saveGeneratedPlan = async (generatedPlan: DesignerPlan, sourcePrompt: string) => {
+    if (!user) {
+      return null
+    }
+
+    const baseNetwork = generatedPlan.baseNetwork ?? "192.168.0.0"
+    const baseCidr = Number(generatedPlan.baseCidr ?? 24)
+    const subnets = parseSubnetInputArray(
+      generatedPlan.subnets.map((subnet) => ({
+        name: subnet.name,
+        hosts: subnet.hosts,
+      }))
+    )
+    const vlsmInput = subnets.map((subnet, index) => ({
+      id: index + 1,
+      name: subnet.name,
+      hosts: subnet.hosts,
+    }))
+    const calculatedResults = calculateVlsm(baseNetwork, vlsmInput)
+
+    const payload: CalculationInsert = {
+      title: generatedPlan.title,
+      source_type: "ai_design",
+      ai_prompt: sourcePrompt,
+      ai_rationale: generatedPlan.rationale,
+      base_network: baseNetwork,
+      base_cidr: baseCidr,
+      input_subnets: subnets,
+      result_subnets: calculatedResults,
+      total_required_hosts: calculatedResults.reduce((sum, subnet) => sum + subnet.requiredHosts, 0),
+      total_usable_hosts: calculatedResults.reduce((sum, subnet) => sum + subnet.usableHosts, 0),
+    }
+
+    const { data, error } = await supabase
+      .from("calculations")
+      .insert({
+        ...payload,
+        user_id: user.id,
+      })
+      .select("id")
+
+    if (error || !data || data.length === 0) {
+      setError("Design generated, but saving to history failed. You can still open and calculate manually.")
+      return null
+    }
+
+    return data[0].id
+  }
+
   const generatePlan = async () => {
     const normalizedPrompt = prompt.trim()
 
@@ -87,6 +144,7 @@ export function DesignerPageClient() {
     setIsGenerating(true)
     setElapsedSeconds(0)
     setError(null)
+    setSavedPlanId(null)
 
     const response = await fetch("/api/ai-designer", {
       method: "POST",
@@ -112,6 +170,11 @@ export function DesignerPageClient() {
     }
 
     setPlan(payload.plan)
+    const nextSavedPlanId = await saveGeneratedPlan(payload.plan, normalizedPrompt)
+    setSavedPlanId(nextSavedPlanId)
+    if (nextSavedPlanId) {
+      toast.success("AI design saved to subnet history.")
+    }
     setGenerationTimeSeconds(
       Number.isFinite(payload.timing?.latencyMs) && (payload.timing?.latencyMs ?? 0) > 0
         ? Math.round((payload.timing?.latencyMs ?? 0) / 1000)
@@ -122,6 +185,11 @@ export function DesignerPageClient() {
 
   const applyToCalculator = () => {
     if (!plan) {
+      return
+    }
+
+    if (savedPlanId) {
+      router.push(`/app?history=${savedPlanId}`)
       return
     }
 
@@ -139,27 +207,6 @@ export function DesignerPageClient() {
       aiTitle: plan.title,
     })
     router.push("/app")
-  }
-
-  const applyToVisualizer = () => {
-    if (!plan) {
-      return
-    }
-
-    replacePlan({
-      baseNetwork: plan.baseNetwork ?? "192.168.0.0",
-      baseCidr: String(plan.baseCidr ?? 24),
-      subnets: plan.subnets.map((subnet, index) => ({
-        id: index + 1,
-        name: subnet.name,
-        hosts: subnet.hosts,
-      })),
-      sourceType: "ai_design",
-      aiPrompt: prompt,
-      aiRationale: plan.rationale,
-      aiTitle: plan.title,
-    })
-    router.push("/app?view=visualizer")
   }
 
   return (
@@ -264,10 +311,7 @@ export function DesignerPageClient() {
 
               <div className="flex gap-2">
                 <Button type="button" onClick={applyToCalculator}>
-                  Apply to calculator
-                </Button>
-                <Button type="button" variant="outline" onClick={applyToVisualizer}>
-                  Visualize
+                  Show plan
                 </Button>
               </div>
             </CardContent>
