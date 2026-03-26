@@ -77,8 +77,8 @@ export function NavBar() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.14, ease: [0.25, 0.1, 0.25, 1] }}
       >
-        <header className="w-full border-b border-border/50 bg-background/95 backdrop-blur-md">
-          <div className="flex h-16 w-full items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <header className="h-16 w-full border-b border-border/50 bg-background/95 backdrop-blur-md">
+          <div className="flex h-full w-full items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
               <SidebarTrigger aria-label="Toggle sidebar" />
               <div className="min-w-0">
