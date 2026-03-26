@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Metadata } from "next";
 import { LayoutShell } from "@/components/ui/layout-shell";
 import { AuthProvider } from "@/components/core/auth-provider";
+import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'})
 
@@ -65,7 +66,10 @@ export default function RootLayout({
       <body>
         <ThemeProvider>
           <AuthProvider>
-            <LayoutShell>{children}</LayoutShell>
+            <LayoutShell>
+              {children}
+              <Toaster />
+            </LayoutShell>
           </AuthProvider>
         </ThemeProvider>
       </body>

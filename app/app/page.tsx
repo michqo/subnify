@@ -8,14 +8,22 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Trash2, Calculator, Download, Copy, Check, ZoomIn, ZoomOut } from "lucide-react"
-import { AnimatePresence, motion, type Variants } from "framer-motion"
+import { motion, type Variants } from "framer-motion"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { useRouter, useSearchParams } from "next/navigation"
+import { toast } from "sonner"
 
 import { calculateVlsm, totalAddressesFromCidr, type VlsmAllocation } from "@/lib/vlsm"
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useAuth } from "@/components/core/auth-provider"
 import { parseSubnetInputArray, parseVlsmAllocations, type CalculationInsert } from "@/lib/history"
+import {
+  getAiPlanBase,
+  normalizeAiDesignedSubnets,
+  unpackAiDesignPayload,
+  type AiDesignedPlan,
+  type StoredAiDesignPayload,
+} from "@/lib/planner"
 import { useSubnetPlanStore } from "@/lib/state/subnet-plan-store"
 import type { PlanSource, SubnetInput } from "@/lib/state/subnet-plan-types"
 
@@ -40,27 +48,16 @@ const sectionVariants: Variants = {
   },
 }
 
-type Subnet = SubnetInput
-
-interface AiDesignedSubnet {
-  name?: string
-  hosts?: number
-}
-
-interface AiDesignedPlan {
-  baseNetwork?: string | null
-  baseCidr?: number | null
-  title?: string
-  subnets?: AiDesignedSubnet[]
-  rationale?: string | null
-}
-
-interface StoredAiDesignPayload {
-  prompt?: string
-  plan?: AiDesignedPlan
-}
-
 type CalculatedSubnet = VlsmAllocation
+
+type SaveCalculationOptions = {
+  sourceType?: PlanSource
+  aiPrompt?: string | null
+  aiRationale?: string | null
+  title?: string | null
+  calculationId?: string | null
+  successMessage?: string
+}
 
 const COLORS = [
   {
@@ -125,12 +122,21 @@ function CalculatorPageContent() {
   const [results, setResults] = useState<CalculatedSubnet[]>([])
   const [copied, setCopied] = useState(false)
   const [exporting, setExporting] = useState(false)
-  const [restoreMessage, setRestoreMessage] = useState<string | null>(null)
-  const [saveMessage, setSaveMessage] = useState<string | null>(null)
-  const [saveError, setSaveError] = useState<string | null>(null)
+  const [planName, setPlanName] = useState("")
+  const [shouldSaveToCloud, setShouldSaveToCloud] = useState(false)
+  const [activeCloudPlanId, setActiveCloudPlanId] = useState<string | null>(null)
   const [zoom, setZoom] = useState(1)
   const [selectedSubnet, setSelectedSubnet] = useState<number | null>(null)
   const [activeView, setActiveView] = useState<"table" | "cards" | "visualizer">("table")
+  const isAiPlan = sourceType === "ai_design"
+  const isCloudLinkedPlan = activeCloudPlanId !== null
+  const isEditingAiCloudPlan = isAiPlan && isCloudLinkedPlan
+  const shouldApplyAiDesign = searchParams.get("aiDesign") === "1"
+  const historyIdFromQuery = searchParams.get("history")
+  const emailConfirmedFromQuery = searchParams.get("emailConfirmed") === "1"
+  const saveSuccessMessage = "Calculation saved to history."
+  const updateSuccessMessage = "Plan updated in cloud history."
+  const signInToSaveMessage = "Sign in to save calculations to cloud history."
 
   const buildAppUrl = useCallback((view?: "table" | "cards" | "visualizer") => {
     if (!view || view === "table") {
@@ -152,21 +158,26 @@ function CalculatorPageContent() {
     setActiveView(resolveViewFromQuery())
   }, [resolveViewFromQuery])
 
+  useEffect(() => {
+    if (planName.trim().length === 0 && typeof aiTitle === "string" && aiTitle.trim().length > 0) {
+      setPlanName(aiTitle.trim())
+    }
+  }, [aiTitle, planName])
+
   const handleViewChange = useCallback((value: string) => {
     const nextView = value === "cards" || value === "visualizer" ? value : "table"
     setActiveView(nextView)
     router.replace(buildAppUrl(nextView), { scroll: false })
   }, [buildAppUrl, router])
 
+  const replaceToCurrentView = useCallback(() => {
+    router.replace(buildAppUrl(resolveViewFromQuery()), { scroll: false })
+  }, [router, buildAppUrl, resolveViewFromQuery])
+
   const saveCalculation = useCallback(async (
     calculatedResults: CalculatedSubnet[],
-    snapshot: { baseNetwork: string; baseCidr: string; subnets: Subnet[] },
-    options?: {
-      sourceType?: PlanSource
-      aiPrompt?: string | null
-      aiRationale?: string | null
-      title?: string | null
-    }
+    snapshot: { baseNetwork: string; baseCidr: string; subnets: SubnetInput[] },
+    options?: SaveCalculationOptions
   ) => {
     if (isAuthLoading) {
       return
@@ -193,38 +204,72 @@ function CalculatorPageContent() {
       total_usable_hosts: totalUsableHosts,
     }
 
-    const { error } = await supabase.from("calculations").insert({
-      ...payload,
-      user_id: user.id,
-    })
+    const updateId = typeof options?.calculationId === "string" && options.calculationId.length > 0 ? options.calculationId : null
 
-    if (error) {
-      setSaveError(`Save failed: ${error.message}`)
-      setSaveMessage(null)
+    if (updateId) {
+      const { count, error } = await supabase
+        .from("calculations")
+        .update(payload, { count: "exact" })
+        .eq("id", updateId)
+        .eq("user_id", user.id)
+
+      if (error) {
+        toast.error(`Update failed: ${error.message}`)
+        return
+      }
+
+      if (!count || count < 1) {
+        toast.error("Update failed: Plan was not found or you do not have permission.")
+        return
+      }
+
+      setActiveCloudPlanId(updateId)
+      toast.success(options?.successMessage ?? saveSuccessMessage)
       return
     }
 
-    setSaveError(null)
-    setSaveMessage("Calculation saved to history.")
-  }, [isAuthLoading, isAuthenticated, supabase, user])
+    const { data, error } = await supabase
+      .from("calculations")
+      .insert({
+        ...payload,
+        user_id: user.id,
+      })
+      .select("id")
+
+    if (error || !data || data.length === 0) {
+      toast.error(`Save failed: ${error?.message ?? "Could not create record."}`)
+      return
+    }
+
+    setActiveCloudPlanId(data[0].id)
+    toast.success(options?.successMessage ?? saveSuccessMessage)
+  }, [isAuthLoading, isAuthenticated, supabase, user, saveSuccessMessage])
 
   const calculateVLSM = () => {
-    setSaveMessage(null)
-    setSaveError(null)
     const calculatedResults = calculateVlsm(baseNetwork, subnets)
     setResults(calculatedResults)
+
+    const shouldPersist = isCloudLinkedPlan || shouldSaveToCloud
+    if (!shouldPersist) {
+      return
+    }
+
+    if (!isAuthenticated) {
+      toast.info(signInToSaveMessage)
+      return
+    }
+
     void saveCalculation(calculatedResults, { baseNetwork, baseCidr, subnets }, {
-      sourceType,
+      sourceType: isAiPlan ? "ai_design" : sourceType,
       aiPrompt,
       aiRationale,
-      title: aiTitle,
+      title: planName,
+      calculationId: activeCloudPlanId,
+      successMessage: isCloudLinkedPlan ? updateSuccessMessage : saveSuccessMessage,
     })
-    clearAiMetadata()
   }
 
   useEffect(() => {
-    const shouldApplyAiDesign = searchParams.get("aiDesign") === "1"
-
     if (!shouldApplyAiDesign || typeof window === "undefined") {
       return
     }
@@ -233,43 +278,23 @@ function CalculatorPageContent() {
     window.sessionStorage.removeItem("subnify_ai_plan")
 
     if (!rawPlan) {
-      setRestoreMessage("No AI design found. Generate one from the Designer tab.")
-      router.replace(buildAppUrl(resolveViewFromQuery()), { scroll: false })
+      toast.error("No AI design found. Generate one from the Designer tab.")
+      replaceToCurrentView()
       return
     }
 
     try {
       const parsed = JSON.parse(rawPlan) as StoredAiDesignPayload | AiDesignedPlan
-      const parsedPlan =
-        typeof parsed === "object" && parsed && "plan" in parsed && parsed.plan ? parsed.plan : (parsed as AiDesignedPlan)
-      const aiPrompt =
-        typeof parsed === "object" && parsed && "prompt" in parsed && typeof parsed.prompt === "string"
-          ? parsed.prompt
-          : null
-
-      const rawSubnets = Array.isArray(parsedPlan.subnets) ? parsedPlan.subnets : []
-      const designedSubnets = rawSubnets
-        .map((subnet, index) => ({
-          id: index + 1,
-          name:
-            typeof subnet.name === "string" && subnet.name.trim().length > 0
-              ? subnet.name.trim()
-              : `LAN ${String.fromCharCode(65 + (index % 26))}`,
-          hosts: Number.isFinite(Number(subnet.hosts)) ? Math.max(2, Math.floor(Number(subnet.hosts))) : 2,
-        }))
-        .slice(0, 20)
+      const { parsedPlan, aiPrompt } = unpackAiDesignPayload(parsed)
+      const designedSubnets = normalizeAiDesignedSubnets(parsedPlan.subnets)
 
       if (designedSubnets.length === 0) {
-        setRestoreMessage("Generated design was empty. Please try a different prompt.")
-        router.replace(buildAppUrl(resolveViewFromQuery()), { scroll: false })
+        toast.error("Generated design was empty. Please try a different prompt.")
+        replaceToCurrentView()
         return
       }
 
-      const nextBaseNetwork =
-        typeof parsedPlan.baseNetwork === "string" && parsedPlan.baseNetwork.trim().length > 0
-          ? parsedPlan.baseNetwork.trim()
-          : "192.168.0.0"
-      const nextBaseCidr = Number.isFinite(Number(parsedPlan.baseCidr)) ? String(parsedPlan.baseCidr) : "24"
+      const { baseNetwork: nextBaseNetwork, baseCidr: nextBaseCidr } = getAiPlanBase(parsedPlan)
 
       replacePlan({
         baseNetwork: nextBaseNetwork,
@@ -286,10 +311,10 @@ function CalculatorPageContent() {
 
       const calculated = calculateVlsm(nextBaseNetwork, designedSubnets)
       setResults(calculated)
-      setSaveMessage(null)
-      setSaveError(null)
-      setRestoreMessage("Applied AI-generated design.")
       const aiGeneratedTitle = typeof parsedPlan.title === "string" ? parsedPlan.title : null
+      setPlanName(aiGeneratedTitle?.trim() ?? "")
+      setActiveCloudPlanId(null)
+      toast.info("Applied AI-generated design.")
 
       void saveCalculation(calculated, { baseNetwork: nextBaseNetwork, baseCidr: nextBaseCidr, subnets: designedSubnets }, {
         sourceType: "ai_design",
@@ -299,17 +324,17 @@ function CalculatorPageContent() {
             ? parsedPlan.rationale
             : null,
         title: aiGeneratedTitle,
+        successMessage: "AI design saved to cloud history.",
       })
     } catch {
-      setRestoreMessage("Could not parse AI design. Please generate again.")
+      toast.error("Could not parse AI design. Please generate again.")
     } finally {
-      router.replace(buildAppUrl(resolveViewFromQuery()), { scroll: false })
+      replaceToCurrentView()
     }
-  }, [router, searchParams, isAuthenticated, isAuthLoading, user, saveCalculation, buildAppUrl, resolveViewFromQuery, replacePlan])
+  }, [shouldApplyAiDesign, saveCalculation, replaceToCurrentView, replacePlan])
 
   useEffect(() => {
-    const historyId = searchParams.get("history")
-    if (!historyId || !isAuthenticated) {
+    if (!historyIdFromQuery || !isAuthenticated) {
       return
     }
 
@@ -317,8 +342,8 @@ function CalculatorPageContent() {
     const restoreFromHistory = async () => {
       const { data, error } = await supabase
         .from("calculations")
-        .select("base_network,base_cidr,input_subnets,result_subnets")
-        .eq("id", historyId)
+        .select("id,title,source_type,ai_prompt,ai_rationale,base_network,base_cidr,input_subnets,result_subnets")
+        .eq("id", historyIdFromQuery)
         .single()
 
       if (ignore) {
@@ -326,7 +351,7 @@ function CalculatorPageContent() {
       }
 
       if (error || !data) {
-        setRestoreMessage("Could not restore that history item.")
+        toast.error("Could not restore that history item.")
         return
       }
 
@@ -343,8 +368,11 @@ function CalculatorPageContent() {
       replacePlan({
         baseNetwork: restoredBaseNetwork,
         baseCidr: restoredBaseCidr,
-        subnets: restoredSubnets.length > 0 ? restoredSubnets : subnets,
-        sourceType: "history",
+        subnets: restoredSubnets,
+        sourceType: data.source_type === "ai_design" ? "ai_design" : "history",
+        aiPrompt: data.source_type === "ai_design" ? data.ai_prompt : null,
+        aiRationale: data.source_type === "ai_design" ? data.ai_rationale : null,
+        aiTitle: typeof data.title === "string" ? data.title : null,
       })
 
       const restoredResults = parseVlsmAllocations(data.result_subnets)
@@ -355,19 +383,19 @@ function CalculatorPageContent() {
         setResults(calculateVlsm(restoredBaseNetwork, restoredSubnets))
       }
 
-      setRestoreMessage("Restored calculation from history.")
-      router.replace(buildAppUrl(resolveViewFromQuery()), { scroll: false })
+      setPlanName(typeof data.title === "string" ? data.title : "")
+      setActiveCloudPlanId(data.id)
+      toast.info(data.source_type === "ai_design" ? "Editing AI design plan from history." : "Editing saved plan from history.")
+      replaceToCurrentView()
     }
 
     void restoreFromHistory()
     return () => {
       ignore = true
     }
-  }, [isAuthenticated, router, searchParams, supabase, buildAppUrl, resolveViewFromQuery, replacePlan, subnets])
+  }, [historyIdFromQuery, isAuthenticated, supabase, replaceToCurrentView, replacePlan])
 
   useEffect(() => {
-    const emailConfirmedFromQuery = searchParams.get("emailConfirmed") === "1"
-
     let emailConfirmedFromHash = false
     if (typeof window !== "undefined" && window.location.hash) {
       const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""))
@@ -379,39 +407,14 @@ function CalculatorPageContent() {
       return
     }
 
-    setRestoreMessage("Email confirmed. Your account is ready.")
+    toast.success("Email confirmed. Your account is ready.")
 
     if (typeof window !== "undefined") {
       window.history.replaceState({}, "", buildAppUrl(resolveViewFromQuery()))
     } else {
-      router.replace(buildAppUrl(resolveViewFromQuery()), { scroll: false })
+      replaceToCurrentView()
     }
-  }, [router, searchParams, buildAppUrl, resolveViewFromQuery])
-
-  useEffect(() => {
-    if (!saveMessage && !saveError) {
-      return
-    }
-
-    const timeout = setTimeout(() => {
-      setSaveMessage(null)
-      setSaveError(null)
-    }, 2800)
-
-    return () => clearTimeout(timeout)
-  }, [saveMessage, saveError])
-
-  useEffect(() => {
-    if (!restoreMessage) {
-      return
-    }
-
-    const timeout = setTimeout(() => {
-      setRestoreMessage(null)
-    }, 4200)
-
-    return () => clearTimeout(timeout)
-  }, [restoreMessage])
+  }, [emailConfirmedFromQuery, buildAppUrl, resolveViewFromQuery, replaceToCurrentView])
 
   const exportPdf = async () => {
     if (results.length === 0 || exporting) {
@@ -532,6 +535,9 @@ function CalculatorPageContent() {
   const resetForm = () => {
     resetPlan()
     clearAiMetadata()
+    setPlanName("")
+    setShouldSaveToCloud(false)
+    setActiveCloudPlanId(null)
     setResults([])
   }
 
@@ -552,51 +558,13 @@ function CalculatorPageContent() {
           <motion.div variants={sectionVariants}>
             <Card className="border-border">
             <CardHeader className="flex flex-row items-center justify-between pb-4">
-              <CardTitle className="text-base">Network Configuration</CardTitle>
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base">Network Configuration</CardTitle>
+                {isEditingAiCloudPlan ? <Badge variant="secondary">Editing AI design plan</Badge> : null}
+                {!isEditingAiCloudPlan && isCloudLinkedPlan ? <Badge variant="outline">Editing saved plan</Badge> : null}
+              </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              <AnimatePresence mode="popLayout" initial={false}>
-                {restoreMessage ? (
-                  <motion.p
-                    key={`restore-${restoreMessage}`}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={{ duration: 0.16, ease: "easeOut" }}
-                    className="text-sm text-muted-foreground"
-                  >
-                    {restoreMessage}
-                  </motion.p>
-                ) : null}
-              </AnimatePresence>
-              <AnimatePresence mode="popLayout" initial={false}>
-                {saveMessage ? (
-                  <motion.p
-                    key={`save-${saveMessage}`}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={{ duration: 0.16, ease: "easeOut" }}
-                    className="text-sm text-muted-foreground"
-                  >
-                    {saveMessage}
-                  </motion.p>
-                ) : null}
-              </AnimatePresence>
-              <AnimatePresence mode="popLayout" initial={false}>
-                {saveError ? (
-                  <motion.p
-                    key={`save-error-${saveError}`}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={{ duration: 0.16, ease: "easeOut" }}
-                    className="text-sm text-destructive"
-                  >
-                    {saveError}
-                  </motion.p>
-                ) : null}
-              </AnimatePresence>
               <form
                 className="space-y-6"
                 onSubmit={(e) => {
@@ -631,6 +599,55 @@ function CalculatorPageContent() {
                       />
                     </Field>
                   </div>
+
+                  {isAuthenticated ? (
+                    <Field className="sm:col-span-2 lg:col-span-2">
+                      <FieldLabel htmlFor="planName">Plan name</FieldLabel>
+                      <Input
+                        id="planName"
+                        value={planName}
+                        onChange={(event) => setPlanName(event.target.value)}
+                        placeholder="Branch office rollout"
+                      />
+                      <FieldDescription>Name this plan before saving to cloud history.</FieldDescription>
+                    </Field>
+                  ) : null}
+
+                  {isAuthenticated && !isAiPlan && !isCloudLinkedPlan ? (
+                    <Field>
+                      <label htmlFor="saveToCloud" className="flex items-center gap-2 text-sm font-medium">
+                        <input
+                          id="saveToCloud"
+                          type="checkbox"
+                          checked={shouldSaveToCloud}
+                          onChange={(event) => setShouldSaveToCloud(event.target.checked)}
+                          className="size-4"
+                        />
+                        Save this manual calculation to cloud history
+                      </label>
+                      <FieldDescription>
+                        Off by default. AI-generated designs still auto-save when applied.
+                      </FieldDescription>
+                    </Field>
+                  ) : null}
+
+                  {isAiPlan ? (
+                    <Field>
+                      <FieldDescription>
+                        {isEditingAiCloudPlan
+                          ? "You are editing a saved AI design plan. Recalculate to update it in cloud history."
+                          : "AI-generated design loaded. Recalculate to save it to cloud history."}
+                      </FieldDescription>
+                    </Field>
+                  ) : null}
+
+                  {!isAiPlan && isCloudLinkedPlan ? (
+                    <Field>
+                      <FieldDescription>
+                        You are editing a saved plan. Recalculate to update it in cloud history.
+                      </FieldDescription>
+                    </Field>
+                  ) : null}
 
                   <Field>
                     <div className="flex items-center justify-between">

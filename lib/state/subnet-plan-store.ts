@@ -1,5 +1,4 @@
 import { create } from "zustand"
-import { createJSONStorage, persist } from "zustand/middleware"
 
 import type { PlanSource, ReplacePlanInput, SubnetInput } from "@/lib/state/subnet-plan-types"
 
@@ -37,86 +36,75 @@ const defaultPlan = {
   aiTitle: null,
 }
 
-export const useSubnetPlanStore = create<SubnetPlanState>()(
-  persist(
-    (set, get) => ({
-      ...defaultPlan,
-      setBaseNetwork: (value) => set({ baseNetwork: value }),
-      setBaseCidr: (value) => set({ baseCidr: value }),
-      addSubnet: () => {
-        const current = get().subnets
-        const newId = Math.max(...current.map((subnet) => subnet.id), 0) + 1
-        const suffix = newId <= 26 ? String.fromCharCode(64 + newId) : `${newId}`
-        set({
-          subnets: [...current, { id: newId, name: `LAN ${suffix}`, hosts: 10 }],
-          sourceType: "manual",
-        })
-      },
-      removeSubnet: (id) => {
-        const current = get().subnets
-        if (current.length <= 1) {
-          return
-        }
-
-        set({
-          subnets: current.filter((subnet) => subnet.id !== id),
-          sourceType: "manual",
-        })
-      },
-      updateSubnet: (id, field, value) => {
-        const nextSubnets = get().subnets.map((subnet) =>
-          subnet.id === id
-            ? {
-                ...subnet,
-                [field]: field === "hosts" ? parseInt(value, 10) || 0 : value,
-              }
-            : subnet
-        )
-
-        set({ subnets: nextSubnets, sourceType: "manual" })
-      },
-      replacePlan: (plan) => {
-        const normalizedSubnets =
-          plan.subnets.length > 0
-            ? plan.subnets.map((subnet, index) => ({
-                id: index + 1,
-                name: subnet.name,
-                hosts: subnet.hosts,
-              }))
-            : defaultSubnets
-
-        set({
-          baseNetwork: plan.baseNetwork,
-          baseCidr: plan.baseCidr,
-          subnets: normalizedSubnets,
-          sourceType: plan.sourceType ?? "manual",
-          aiPrompt: plan.aiPrompt ?? null,
-          aiRationale: plan.aiRationale ?? null,
-          aiTitle: plan.aiTitle ?? null,
-        })
-      },
-      clearAiMetadata: () => {
-        set({
-          sourceType: "manual",
-          aiPrompt: null,
-          aiRationale: null,
-          aiTitle: null,
-        })
-      },
-      resetPlan: () => set(defaultPlan),
-    }),
-    {
-      name: "subnify-subnet-plan",
-      storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({
-        baseNetwork: state.baseNetwork,
-        baseCidr: state.baseCidr,
-        subnets: state.subnets,
-        sourceType: state.sourceType,
-        aiPrompt: state.aiPrompt,
-        aiRationale: state.aiRationale,
-        aiTitle: state.aiTitle,
-      }),
+export const useSubnetPlanStore = create<SubnetPlanState>()((set, get) => ({
+  ...defaultPlan,
+  setBaseNetwork: (value) => set({ baseNetwork: value }),
+  setBaseCidr: (value) => set({ baseCidr: value }),
+  addSubnet: () => {
+    const current = get().subnets
+    const currentSourceType = get().sourceType
+    const newId = Math.max(...current.map((subnet) => subnet.id), 0) + 1
+    const suffix = newId <= 26 ? String.fromCharCode(64 + newId) : `${newId}`
+    set({
+      subnets: [...current, { id: newId, name: `LAN ${suffix}`, hosts: 10 }],
+      sourceType: currentSourceType === "ai_design" ? "ai_design" : "manual",
+    })
+  },
+  removeSubnet: (id) => {
+    const current = get().subnets
+    const currentSourceType = get().sourceType
+    if (current.length <= 1) {
+      return
     }
-  )
-)
+
+    set({
+      subnets: current.filter((subnet) => subnet.id !== id),
+      sourceType: currentSourceType === "ai_design" ? "ai_design" : "manual",
+    })
+  },
+  updateSubnet: (id, field, value) => {
+    const currentSourceType = get().sourceType
+    const nextSubnets = get().subnets.map((subnet) =>
+      subnet.id === id
+        ? {
+            ...subnet,
+            [field]: field === "hosts" ? parseInt(value, 10) || 0 : value,
+          }
+        : subnet
+    )
+
+    set({
+      subnets: nextSubnets,
+      sourceType: currentSourceType === "ai_design" ? "ai_design" : "manual",
+    })
+  },
+  replacePlan: (plan) => {
+    const normalizedSubnets =
+      plan.subnets.length > 0
+        ? plan.subnets.map((subnet, index) => ({
+            id: index + 1,
+            name: subnet.name,
+            hosts: subnet.hosts,
+          }))
+        : defaultSubnets
+
+    set({
+      baseNetwork: plan.baseNetwork,
+      baseCidr: plan.baseCidr,
+      subnets: normalizedSubnets,
+      sourceType: plan.sourceType ?? "manual",
+      aiPrompt: plan.aiPrompt ?? null,
+      aiRationale: plan.aiRationale ?? null,
+      aiTitle: plan.aiTitle ?? null,
+    })
+  },
+  clearAiMetadata: () => {
+    set({
+      sourceType: "manual",
+      aiPrompt: null,
+      aiRationale: null,
+      aiTitle: null,
+    })
+  },
+  resetPlan: () => set(defaultPlan),
+}))

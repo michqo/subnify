@@ -1,9 +1,10 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { AnimatePresence, motion } from "framer-motion"
 import { History, Loader2, Trash2 } from "lucide-react"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -23,7 +24,10 @@ export function HistoryList({ items, error }: HistoryListProps) {
   const { user } = useAuth()
   const [records, setRecords] = useState(items)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setRecords(items)
+  }, [items])
 
   const deleteCalculation = async (id: string) => {
     if (deletingId) {
@@ -31,10 +35,9 @@ export function HistoryList({ items, error }: HistoryListProps) {
     }
 
     setDeletingId(id)
-    setDeleteError(null)
 
     if (!user) {
-      setDeleteError("You must be signed in to delete calculations.")
+      toast.error("You must be signed in to delete calculations.")
       setDeletingId(null)
       return
     }
@@ -47,13 +50,13 @@ export function HistoryList({ items, error }: HistoryListProps) {
       .select("id")
 
     if (deleteQueryError) {
-      setDeleteError(`Delete failed: ${deleteQueryError.message}`)
+      toast.error(`Delete failed: ${deleteQueryError.message}`)
       setDeletingId(null)
       return
     }
 
     if (!deletedRows || deletedRows.length === 0) {
-      setDeleteError("Delete failed: Calculation was not removed (permission or record mismatch).")
+      toast.error("Delete failed: Calculation was not removed (permission or record mismatch).")
       setDeletingId(null)
       return
     }
@@ -73,7 +76,6 @@ export function HistoryList({ items, error }: HistoryListProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {deleteError ? <p className="mb-3 text-sm text-destructive">{deleteError}</p> : null}
             {error ? (
               <p className="text-sm text-destructive">{error}</p>
             ) : records.length === 0 ? (
@@ -132,7 +134,7 @@ export function HistoryList({ items, error }: HistoryListProps) {
                               className="gap-1.5"
                               onClick={() => router.push(`/app?history=${item.id}`)}
                             >
-                              View calculation
+                              View plan
                             </Button>
                           </div>
                         </div>
