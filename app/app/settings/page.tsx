@@ -1,6 +1,7 @@
 "use client"
 
-import { useMemo, useState, useEffect } from "react"
+import { useEffect, useState } from "react"
+import { useForm } from "@tanstack/react-form"
 import { Eye, EyeOff } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
 
@@ -9,12 +10,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
-import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useAuth } from "@/components/core/auth-provider"
+import { useChangePasswordMutation, useUpdateUsernameMutation } from "@/lib/queries/settings"
+import { passwordSchema, usernameSchema } from "@/lib/schemas/settings"
 
 export default function SettingsPage() {
-  const supabase = useMemo(() => createSupabaseBrowserClient(), [])
   const { user, isAuthenticated, refreshUser } = useAuth()
+  const updateUsernameMutation = useUpdateUsernameMutation()
+  const changePasswordMutation = useChangePasswordMutation()
   const providers = Array.isArray(user?.app_metadata?.providers)
     ? (user?.app_metadata?.providers as string[])
     : []
@@ -24,73 +27,71 @@ export default function SettingsPage() {
   const canChangePassword = isAuthenticated && hasPasswordLogin && !isGithubAccount
 
   const currentDisplayName = (user?.user_metadata?.display_name as string | undefined) ?? ""
-  const [usernameDraft, setUsernameDraft] = useState("")
-  const [isUsernameDirty, setIsUsernameDirty] = useState(false)
-  const [newPassword, setNewPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
   const [usernameMessage, setUsernameMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [passwordMessage, setPasswordMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
-  const handleUsernameUpdate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!isAuthenticated || !user) {
-      return
-    }
+  const usernameForm = useForm({
+    defaultValues: {
+      username: currentDisplayName,
+    },
+    onSubmit: async ({ value }) => {
+      setUsernameMessage(null)
 
-    setIsLoading(true)
-    setUsernameMessage(null)
+      if (!isAuthenticated || !user) {
+        return
+      }
 
-    const usernameToSave = (isUsernameDirty ? usernameDraft : currentDisplayName).trim()
+      const parsed = usernameSchema.safeParse(value)
+      if (!parsed.success) {
+        const message = parsed.error.issues[0]?.message ?? "Invalid username."
+        setUsernameMessage({ type: "error", text: message })
+        return
+      }
 
-    const { error } = await supabase.auth.updateUser({
-      data: { display_name: usernameToSave || null },
-    })
+      const usernameToSave = parsed.data.username.trim()
 
-    if (error) {
-      setUsernameMessage({ type: "error", text: `Failed to update username: ${error.message}` })
-    } else {
-      await refreshUser()
-      setIsUsernameDirty(false)
-      setUsernameDraft("")
-      setUsernameMessage({ type: "success", text: "Username updated successfully." })
-    }
+      try {
+        await updateUsernameMutation.mutateAsync(usernameToSave.length > 0 ? usernameToSave : null)
+        await refreshUser()
+        setUsernameMessage({ type: "success", text: "Username updated successfully." })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to update username."
+        setUsernameMessage({ type: "error", text: `Failed to update username: ${message}` })
+      }
+    },
+  })
 
-    setIsLoading(false)
-  }
+  const passwordForm = useForm({
+    defaultValues: {
+      newPassword: "",
+      confirmPassword: "",
+    },
+    onSubmit: async ({ value, formApi }) => {
+      setPasswordMessage(null)
 
-  const handlePasswordChange = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setPasswordMessage(null)
+      const parsed = passwordSchema.safeParse(value)
+      if (!parsed.success) {
+        const message = parsed.error.issues[0]?.message ?? "Invalid password."
+        setPasswordMessage({ type: "error", text: message })
+        return
+      }
 
-    if (newPassword !== confirmPassword) {
-      setPasswordMessage({ type: "error", text: "Passwords do not match." })
-      return
-    }
+      try {
+        await changePasswordMutation.mutateAsync(parsed.data.newPassword)
+        setPasswordMessage({ type: "success", text: "Password changed successfully." })
+        formApi.reset()
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to change password."
+        setPasswordMessage({ type: "error", text: `Failed to change password: ${message}` })
+      }
+    },
+  })
 
-    if (newPassword.length < 6) {
-      setPasswordMessage({ type: "error", text: "Password must be at least 6 characters." })
-      return
-    }
-
-    setIsLoading(true)
-
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword,
-    })
-
-    if (error) {
-      setPasswordMessage({ type: "error", text: `Failed to change password: ${error.message}` })
-    } else {
-      setPasswordMessage({ type: "success", text: "Password changed successfully." })
-      setNewPassword("")
-      setConfirmPassword("")
-    }
-
-    setIsLoading(false)
-  }
+  useEffect(() => {
+    usernameForm.setFieldValue("username", currentDisplayName)
+  }, [currentDisplayName, usernameForm])
 
   useEffect(() => {
     if (!usernameMessage && !passwordMessage) {
@@ -132,7 +133,13 @@ export default function SettingsPage() {
               <CardTitle className="text-base">Profile</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleUsernameUpdate} className="space-y-4">
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  void usernameForm.handleSubmit()
+                }}
+                className="space-y-4"
+              >
                 <FieldGroup>
                   <Field>
                     <FieldLabel htmlFor="email">Email</FieldLabel>
@@ -150,24 +157,26 @@ export default function SettingsPage() {
 
                   <Field>
                     <FieldLabel htmlFor="username">Username (optional)</FieldLabel>
-                    <Input
-                      id="username"
-                      name="username"
-                      type="text"
-                      autoComplete="username"
-                      value={isUsernameDirty ? usernameDraft : currentDisplayName}
-                      onChange={(e) => {
-                        setIsUsernameDirty(true)
-                        setUsernameDraft(e.target.value)
-                      }}
-                      placeholder="Set a display name"
-                      className="h-11 border-border bg-secondary/50"
-                    />
+                    <usernameForm.Field name="username">
+                      {(field) => (
+                        <Input
+                          id="username"
+                          name={field.name}
+                          type="text"
+                          autoComplete="username"
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(event) => field.handleChange(event.target.value)}
+                          placeholder="Set a display name"
+                          className="h-11 border-border bg-secondary/50"
+                        />
+                      )}
+                    </usernameForm.Field>
                     <FieldDescription>This will be shown instead of your email.</FieldDescription>
                   </Field>
 
-                  <Button type="submit" disabled={isLoading}>
-                    {isLoading ? "Saving..." : "Save Username"}
+                  <Button type="submit" disabled={updateUsernameMutation.isPending}>
+                    {updateUsernameMutation.isPending ? "Saving..." : "Save Username"}
                   </Button>
 
                   <AnimatePresence mode="popLayout" initial={false}>
@@ -197,22 +206,33 @@ export default function SettingsPage() {
               <CardTitle className="text-base">Security</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handlePasswordChange} className="space-y-4">
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  void passwordForm.handleSubmit()
+                }}
+                className="space-y-4"
+              >
                 <FieldGroup>
                   <Field>
                     <FieldLabel htmlFor="newPassword">New Password</FieldLabel>
                     <div className="relative">
-                      <Input
-                        id="newPassword"
-                        name="password"
-                        type={showNewPassword ? "text" : "password"}
-                        autoComplete="new-password"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Enter new password"
-                        required
-                        className="h-11 border-border bg-secondary/50 pr-10"
-                      />
+                      <passwordForm.Field name="newPassword">
+                        {(field) => (
+                          <Input
+                            id="newPassword"
+                            name={field.name}
+                            type={showNewPassword ? "text" : "password"}
+                            autoComplete="new-password"
+                            value={field.state.value}
+                            onBlur={field.handleBlur}
+                            onChange={(event) => field.handleChange(event.target.value)}
+                            placeholder="Enter new password"
+                            required
+                            className="h-11 border-border bg-secondary/50 pr-10"
+                          />
+                        )}
+                      </passwordForm.Field>
                       <button
                         type="button"
                         onClick={() => setShowNewPassword(!showNewPassword)}
@@ -227,17 +247,22 @@ export default function SettingsPage() {
                   <Field>
                     <FieldLabel htmlFor="confirmPassword">Confirm Password</FieldLabel>
                     <div className="relative">
-                      <Input
-                        id="confirmPassword"
-                        name="confirmPassword"
-                        type={showConfirmPassword ? "text" : "password"}
-                        autoComplete="new-password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Repeat new password"
-                        required
-                        className="h-11 border-border bg-secondary/50 pr-10"
-                      />
+                      <passwordForm.Field name="confirmPassword">
+                        {(field) => (
+                          <Input
+                            id="confirmPassword"
+                            name={field.name}
+                            type={showConfirmPassword ? "text" : "password"}
+                            autoComplete="new-password"
+                            value={field.state.value}
+                            onBlur={field.handleBlur}
+                            onChange={(event) => field.handleChange(event.target.value)}
+                            placeholder="Repeat new password"
+                            required
+                            className="h-11 border-border bg-secondary/50 pr-10"
+                          />
+                        )}
+                      </passwordForm.Field>
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
@@ -248,8 +273,8 @@ export default function SettingsPage() {
                     </div>
                   </Field>
 
-                  <Button type="submit" disabled={isLoading} variant="destructive">
-                    {isLoading ? "Changing..." : "Change Password"}
+                  <Button type="submit" disabled={changePasswordMutation.isPending} variant="destructive">
+                    {changePasswordMutation.isPending ? "Changing..." : "Change Password"}
                   </Button>
 
                   <AnimatePresence mode="popLayout" initial={false}>

@@ -15,7 +15,7 @@ function getSupabaseConfig() {
 export async function middleware(request: NextRequest) {
   const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig()
 
-  let response = NextResponse.next({
+  const response = NextResponse.next({
     request,
   })
 

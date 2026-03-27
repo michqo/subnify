@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { Loader2, Sparkles, Wand2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -10,67 +10,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAuth } from "@/components/core/auth-provider"
-import { parseSubnetInputArray, type CalculationInsert } from "@/lib/history"
-import { useSubnetPlanStore } from "@/lib/state/subnet-plan-store"
-import { createSupabaseBrowserClient } from "@/lib/supabase/client"
-import { calculateVlsm } from "@/lib/vlsm"
-
-type DesignerSubnet = {
-  name: string
-  hosts: number
-  purpose?: string
-}
-
-type DesignerPlan = {
-  baseNetwork: string | null
-  baseCidr: number | null
-  title: string
-  rationale: string
-  subnets: DesignerSubnet[]
-}
-
-type QuotaSnapshot = {
-  limit: number
-  used: number
-  remaining: number
-  windowHours: number
-}
-
-function formatWaitTime(seconds: number): string {
-  if (seconds < 120) {
-    return `${seconds}s`
-  }
-  const mins = Math.floor(seconds / 60)
-  const secs = seconds % 60
-  return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`
-}
+import type { DesignerPlan } from "@/lib/ai-designer-types"
+import { formatWaitTime } from "@/lib/ai-designer-types"
+import { AiDesignerApiError, useAiDesignerQuotaQuery, useGenerateAiDesignMutation } from "@/lib/queries/ai-designer"
+import { useSaveAiGeneratedCalculationMutation } from "@/lib/queries/calculations"
 
 export function DesignerPageClient() {
   const router = useRouter()
-  const supabase = useMemo(() => createSupabaseBrowserClient(), [])
   const { user } = useAuth()
-  const replacePlan = useSubnetPlanStore((state) => state.replacePlan)
+  const userId = user?.id ?? null
+  const { data: quota, isLoading: isQuotaLoading } = useAiDesignerQuotaQuery(userId)
+  const generateDesignMutation = useGenerateAiDesignMutation(userId)
+  const savePlanMutation = useSaveAiGeneratedCalculationMutation(userId)
   const [prompt, setPrompt] = useState("")
-  const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [plan, setPlan] = useState<DesignerPlan | null>(null)
   const [savedPlanId, setSavedPlanId] = useState<string | null>(null)
-  const [quota, setQuota] = useState<QuotaSnapshot | null>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [generationTimeSeconds, setGenerationTimeSeconds] = useState(0)
-  const isLimitReached = quota !== null && quota.remaining <= 0
-
-  useEffect(() => {
-    const loadQuota = async () => {
-      const response = await fetch("/api/ai-designer", { method: "GET" })
-      const payload = (await response.json().catch(() => ({}))) as { quota?: QuotaSnapshot }
-      if (response.ok && payload.quota) {
-        setQuota(payload.quota)
-      }
-    }
-
-    void loadQuota()
-  }, [])
+  const isGenerating = generateDesignMutation.isPending || savePlanMutation.isPending
+  const isLimitReached = (quota?.remaining ?? 1) <= 0
 
   useEffect(() => {
     if (!isGenerating) {
@@ -84,55 +43,6 @@ export function DesignerPageClient() {
     return () => clearInterval(interval)
   }, [isGenerating])
 
-  const saveGeneratedPlan = async (generatedPlan: DesignerPlan, sourcePrompt: string) => {
-    if (!user) {
-      return null
-    }
-
-    const baseNetwork = generatedPlan.baseNetwork ?? "192.168.0.0"
-    const baseCidr = Number(generatedPlan.baseCidr ?? 24)
-    const subnets = parseSubnetInputArray(
-      generatedPlan.subnets.map((subnet) => ({
-        name: subnet.name,
-        hosts: subnet.hosts,
-      }))
-    )
-    const vlsmInput = subnets.map((subnet, index) => ({
-      id: index + 1,
-      name: subnet.name,
-      hosts: subnet.hosts,
-    }))
-    const calculatedResults = calculateVlsm(baseNetwork, vlsmInput)
-
-    const payload: CalculationInsert = {
-      title: generatedPlan.title,
-      source_type: "ai_design",
-      ai_prompt: sourcePrompt,
-      ai_rationale: generatedPlan.rationale,
-      base_network: baseNetwork,
-      base_cidr: baseCidr,
-      input_subnets: subnets,
-      result_subnets: calculatedResults,
-      total_required_hosts: calculatedResults.reduce((sum, subnet) => sum + subnet.requiredHosts, 0),
-      total_usable_hosts: calculatedResults.reduce((sum, subnet) => sum + subnet.usableHosts, 0),
-    }
-
-    const { data, error } = await supabase
-      .from("calculations")
-      .insert({
-        ...payload,
-        user_id: user.id,
-      })
-      .select("id")
-
-    if (error || !data || data.length === 0) {
-      setError("Design generated, but saving to history failed. You can still open and calculate manually.")
-      return null
-    }
-
-    return data[0].id
-  }
-
   const generatePlan = async () => {
     const normalizedPrompt = prompt.trim()
 
@@ -141,46 +51,38 @@ export function DesignerPageClient() {
       return
     }
 
-    setIsGenerating(true)
     setElapsedSeconds(0)
     setError(null)
     setSavedPlanId(null)
 
-    const response = await fetch("/api/ai-designer", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: normalizedPrompt }),
-    })
+    try {
+      const payload = await generateDesignMutation.mutateAsync({ prompt: normalizedPrompt })
+      setPlan(payload.plan)
 
-    const payload = (await response.json().catch(() => ({}))) as {
-      plan?: DesignerPlan
-      error?: string
-      quota?: QuotaSnapshot
-      timing?: { latencyMs?: number }
-    }
+      const nextSavedPlanId = await savePlanMutation.mutateAsync({
+        generatedPlan: payload.plan,
+        sourcePrompt: normalizedPrompt,
+      })
 
-    if (payload.quota) {
-      setQuota(payload.quota)
-    }
+      setSavedPlanId(nextSavedPlanId)
+      if (nextSavedPlanId) {
+        toast.success("AI design saved to subnet history.")
+      }
 
-    if (!response.ok || !payload.plan) {
-      setError(payload.error ?? "Failed to generate a design.")
-      setIsGenerating(false)
-      return
+      setGenerationTimeSeconds(
+        Number.isFinite(payload.timing?.latencyMs) && (payload.timing?.latencyMs ?? 0) > 0
+          ? Math.round((payload.timing?.latencyMs ?? 0) / 1000)
+          : elapsedSeconds
+      )
+    } catch (generationError) {
+      if (generationError instanceof AiDesignerApiError) {
+        setError(generationError.message)
+      } else if (generationError instanceof Error) {
+        setError(generationError.message)
+      } else {
+        setError("Failed to generate a design.")
+      }
     }
-
-    setPlan(payload.plan)
-    const nextSavedPlanId = await saveGeneratedPlan(payload.plan, normalizedPrompt)
-    setSavedPlanId(nextSavedPlanId)
-    if (nextSavedPlanId) {
-      toast.success("AI design saved to subnet history.")
-    }
-    setGenerationTimeSeconds(
-      Number.isFinite(payload.timing?.latencyMs) && (payload.timing?.latencyMs ?? 0) > 0
-        ? Math.round((payload.timing?.latencyMs ?? 0) / 1000)
-        : elapsedSeconds
-    )
-    setIsGenerating(false)
   }
 
   const applyToCalculator = () => {
@@ -193,20 +95,17 @@ export function DesignerPageClient() {
       return
     }
 
-    replacePlan({
-      baseNetwork: plan.baseNetwork ?? "192.168.0.0",
-      baseCidr: String(plan.baseCidr ?? 24),
-      subnets: plan.subnets.map((subnet, index) => ({
-        id: index + 1,
-        name: subnet.name,
-        hosts: subnet.hosts,
-      })),
-      sourceType: "ai_design",
-      aiPrompt: prompt,
-      aiRationale: plan.rationale,
-      aiTitle: plan.title,
-    })
-    router.push("/app")
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(
+        "subnify_ai_plan",
+        JSON.stringify({
+          prompt,
+          plan,
+        })
+      )
+    }
+
+    router.push("/app?aiDesign=1")
   }
 
   return (
@@ -228,9 +127,13 @@ export function DesignerPageClient() {
                 <div className="rounded-lg border border-border bg-secondary/30 p-3 text-sm text-muted-foreground">
                   Remaining designs: <span className="font-medium text-foreground">{quota.remaining}</span> / {quota.limit} in {quota.windowHours}h
                 </div>
-              ) : (
+              ) : isQuotaLoading ? (
                 <div className="rounded-lg border border-border bg-secondary/30 p-3">
                   <Skeleton className="h-5 w-56" />
+                </div>
+              ) : (
+                <div className="rounded-lg border border-border bg-secondary/30 p-3 text-sm text-muted-foreground">
+                  Unable to load quota. Try refreshing.
                 </div>
               )}
             </div>

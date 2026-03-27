@@ -1,6 +1,5 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { AnimatePresence, motion } from "framer-motion"
 import { History, Loader2, Trash2 } from "lucide-react"
@@ -10,60 +9,42 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/components/core/auth-provider"
-import type { CalculationRecord } from "@/lib/history"
-import { createSupabaseBrowserClient } from "@/lib/supabase/client"
+import { useCalculationsQuery, useDeleteCalculationMutation } from "@/lib/queries/calculations"
 
-type HistoryListProps = {
-  items: CalculationRecord[]
-  error?: string
-}
-
-export function HistoryList({ items, error }: HistoryListProps) {
+export function HistoryList() {
   const router = useRouter()
-  const supabase = useMemo(() => createSupabaseBrowserClient(), [])
   const { user } = useAuth()
-  const [records, setRecords] = useState(items)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const userId = user?.id ?? null
+  const {
+    data: records = [],
+    isLoading,
+    isError,
+    error,
+  } = useCalculationsQuery(userId)
+  const {
+    mutateAsync: deleteCalculation,
+    isPending: isDeleting,
+    variables: deletingId,
+  } = useDeleteCalculationMutation(userId)
 
-  useEffect(() => {
-    setRecords(items)
-  }, [items])
-
-  const deleteCalculation = async (id: string) => {
-    if (deletingId) {
+  const handleDelete = async (id: string) => {
+    if (isDeleting) {
       return
     }
 
-    setDeletingId(id)
-
-    if (!user) {
-      toast.error("You must be signed in to delete calculations.")
-      setDeletingId(null)
-      return
+    try {
+      await deleteCalculation(id)
+    } catch (deleteError) {
+      const message = deleteError instanceof Error ? deleteError.message : "Delete failed."
+      toast.error(`Delete failed: ${message}`)
     }
-
-    const { data: deletedRows, error: deleteQueryError } = await supabase
-      .from("calculations")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", user.id)
-      .select("id")
-
-    if (deleteQueryError) {
-      toast.error(`Delete failed: ${deleteQueryError.message}`)
-      setDeletingId(null)
-      return
-    }
-
-    if (!deletedRows || deletedRows.length === 0) {
-      toast.error("Delete failed: Calculation was not removed (permission or record mismatch).")
-      setDeletingId(null)
-      return
-    }
-
-    setRecords((current) => current.filter((item) => item.id !== id))
-    setDeletingId(null)
   }
+
+  const errorMessage = !user
+    ? "Sign in required to view subnet history."
+    : isError
+      ? (error as Error).message
+      : null
 
   return (
     <div className="flex-1 overflow-auto p-4 lg:p-6">
@@ -76,8 +57,10 @@ export function HistoryList({ items, error }: HistoryListProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {error ? (
-              <p className="text-sm text-destructive">{error}</p>
+            {errorMessage ? (
+              <p className="text-sm text-destructive">{errorMessage}</p>
+            ) : isLoading ? (
+              <p className="text-sm text-muted-foreground">Loading history...</p>
             ) : records.length === 0 ? (
               <p className="text-sm text-muted-foreground">No saved calculations yet.</p>
             ) : (
@@ -118,8 +101,8 @@ export function HistoryList({ items, error }: HistoryListProps) {
                               type="button"
                               variant="outline"
                               size="icon"
-                              onClick={() => deleteCalculation(item.id)}
-                              disabled={deletingId !== null}
+                              onClick={() => void handleDelete(item.id)}
+                              disabled={isDeleting}
                               aria-label="Delete calculation"
                             >
                               {deletingId === item.id ? (

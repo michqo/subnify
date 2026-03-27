@@ -1,12 +1,10 @@
 import { Geist_Mono, Inter } from "next/font/google"
 
 import "./globals.css"
-import { ThemeProvider } from "@/components/ui/theme-provider"
 import { cn } from "@/lib/utils";
 import { Metadata } from "next";
 import { LayoutShell } from "@/components/ui/layout-shell";
-import { AuthProvider } from "@/components/core/auth-provider";
-import { Toaster } from "@/components/ui/sonner";
+import { Providers } from "@/components/core/providers";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'})
 
@@ -64,14 +62,9 @@ export default function RootLayout({
       className={cn("antialiased", fontMono.variable, "font-sans", inter.variable)}
     >
       <body>
-        <ThemeProvider>
-          <AuthProvider>
-            <LayoutShell>
-              {children}
-              <Toaster />
-            </LayoutShell>
-          </AuthProvider>
-        </ThemeProvider>
+        <Providers>
+          <LayoutShell>{children}</LayoutShell>
+        </Providers>
       </body>
     </html>
   )
