@@ -147,7 +147,7 @@ export function CalculatorInputSection({
               </Field>
             </div>
 
-            {isAuthenticated ? (
+            {isAuthenticated && (shouldSaveToCloud || isCloudLinkedPlan) ? (
               <Field className="sm:col-span-2 lg:col-span-2">
                 <FieldLabel htmlFor="planName">Plan name</FieldLabel>
                 <Input
@@ -171,9 +171,6 @@ export function CalculatorInputSection({
                   />
                   Save this manual calculation to cloud history
                 </label>
-                <FieldDescription>
-                  Off by default. AI-generated designs still auto-save when applied.
-                </FieldDescription>
               </Field>
             ) : null}
 

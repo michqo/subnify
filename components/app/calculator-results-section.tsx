@@ -10,6 +10,52 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { PlanView } from "@/hooks/use-plan-view-state"
 import type { SubnetInput } from "@/lib/state/subnet-plan-types"
 import type { VlsmAllocation } from "@/lib/vlsm"
+import { toast } from "sonner"
+import { cn } from "@/lib/utils"
+
+const onClickCopy = (address: string) => {
+  navigator.clipboard.writeText(address)
+  toast.success("Address copied to clipboard")
+}
+
+function AddressTableItem({
+  className,
+  address,
+}: {
+  className?: string
+  address: string
+}) {
+  return (
+    <td
+      className={cn("cursor-pointer py-3 font-mono hover:underline", className)}
+      onClick={() => onClickCopy(address)}
+    >
+      {address}
+    </td>
+  )
+}
+
+function AddressCardItem({
+  className,
+  label,
+  address,
+}: {
+  className?: string
+  label: string
+  address: string
+}) {
+  return (
+    <div className="flex justify-between">
+      <span className="text-muted-foreground">{label}:</span>
+      <code
+        onClick={() => onClickCopy(address)}
+        className={cn("cursor-pointer font-mono hover:underline", className)}
+      >
+        {address}
+      </code>
+    </div>
+  )
+}
 
 type CalculatorResultsSectionProps = {
   results: VlsmAllocation[]
@@ -144,15 +190,19 @@ export function CalculatorResultsSection({
                     results.map((result, index) => (
                       <tr key={index} className="group">
                         <td className="py-3 font-medium">{result.name}</td>
-                        <td className="py-3 font-mono text-primary">{result.networkAddress}</td>
+                        <AddressTableItem className="text-primary" address={result.networkAddress} />
                         <td className="py-3">
                           <Badge variant="outline">/{result.cidr}</Badge>
                         </td>
-                        <td className="py-3 font-mono text-muted-foreground">{result.subnetMask}</td>
+                        <AddressTableItem className="text-muted-foreground" address={result.subnetMask} />
                         <td className="py-3 font-mono text-xs">
-                          {result.firstHost} - {result.lastHost}
+                          <span onClick={() => onClickCopy(result.firstHost)} className="cursor-pointer hover:underline">
+                            {result.firstHost}
+                          </span> - <span onClick={() => onClickCopy(result.lastHost)} className="cursor-pointer hover:underline">
+                            {result.lastHost}
+                          </span>
                         </td>
-                        <td className="py-3 font-mono text-muted-foreground">{result.broadcast}</td>
+                        <AddressTableItem className="text-muted-foreground" address={result.broadcast} />
                         <td className="py-3 text-right font-semibold text-primary">{result.usableHosts}</td>
                       </tr>
                     ))
@@ -182,30 +232,15 @@ export function CalculatorResultsSection({
                       <Badge variant="secondary">/{result.cidr}</Badge>
                     </div>
                     <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Network:</span>
-                        <code className="font-mono text-primary">{result.networkAddress}</code>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Mask:</span>
-                        <code className="font-mono">{result.subnetMask}</code>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">First Host:</span>
-                        <code className="font-mono">{result.firstHost}</code>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Last Host:</span>
-                        <code className="font-mono">{result.lastHost}</code>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Broadcast:</span>
-                        <code className="font-mono">{result.broadcast}</code>
-                      </div>
-                      <div className="mt-3 flex justify-between border-t border-border pt-3">
-                        <span className="text-muted-foreground">Usable Hosts:</span>
-                        <span className="font-semibold text-primary">{result.usableHosts}</span>
-                      </div>
+                      <AddressCardItem className="text-primary" label="Network" address={result.networkAddress} />
+                      <AddressCardItem label="Subnet Mask" address={result.subnetMask} />
+                      <AddressCardItem label="First Host" address={result.firstHost} />
+                      <AddressCardItem label="Last Host" address={result.lastHost} />
+                      <AddressCardItem label="Broadcast" address={result.broadcast} />
+                    </div>
+                    <div className="mt-3 flex justify-between border-t border-border pt-3">
+                      <span className="text-muted-foreground">Usable Hosts:</span>
+                      <span className="font-semibold text-primary">{result.usableHosts}</span>
                     </div>
                   </motion.div>
                 ))}
