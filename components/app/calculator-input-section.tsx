@@ -9,7 +9,7 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui
 import { Input } from "@/components/ui/input"
 import type { SubnetInput } from "@/lib/state/subnet-plan-types"
 
-type SortableSubnetRowProps = {
+type SubnetRowProps = {
   subnet: SubnetInput
   index: number
   subnetCount: number
@@ -17,13 +17,13 @@ type SortableSubnetRowProps = {
   onRemoveSubnet: (id: number) => void
 }
 
-function SortableSubnetRow({
+function SubnetRow({
   subnet,
   index,
   subnetCount,
   onUpdateSubnet,
   onRemoveSubnet,
-}: SortableSubnetRowProps) {
+}: SubnetRowProps) {
   return (
     <div
       className="flex items-center gap-3 rounded-lg border border-border bg-secondary/30 p-3"
@@ -206,7 +206,7 @@ export function CalculatorInputSection({
 
               <div className="space-y-2">
                 {subnets.map((subnet, index) => (
-                  <SortableSubnetRow
+                  <SubnetRow
                     key={subnet.id}
                     subnet={subnet}
                     index={index}

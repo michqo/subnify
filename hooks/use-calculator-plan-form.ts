@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback } from "react"
-import { useForm } from "@tanstack/react-form"
+import { useForm, useStore } from "@tanstack/react-form"
 
 import type { ReplacePlanInput, SubnetInput } from "@/lib/state/subnet-plan-types"
 
@@ -36,6 +36,7 @@ export function useCalculatorPlanForm() {
     defaultValues: defaultFormValues,
   })
   const formValues = calculatorForm.state.values
+  const subnets = useStore(calculatorForm.store, (state) => state.values.subnets)
 
   const keepSourceTypeConsistent = useCallback(() => {
     calculatorForm.setFieldValue(
@@ -59,34 +60,31 @@ export function useCalculatorPlanForm() {
   )
 
   const addSubnet = useCallback(() => {
-    const currentSubnets = calculatorForm.state.values.subnets
-    const newId = Math.max(...currentSubnets.map((subnet) => subnet.id), 0) + 1
+    const newId = Math.max(...subnets.map((subnet) => subnet.id), 0) + 1
     const suffix = newId <= 26 ? String.fromCharCode(64 + newId) : `${newId}`
 
-    calculatorForm.setFieldValue("subnets", [...currentSubnets, { id: newId, name: `LAN ${suffix}`, hosts: 10 }])
+    calculatorForm.setFieldValue("subnets", [...subnets, { id: newId, name: `LAN ${suffix}`, hosts: 10 }])
     keepSourceTypeConsistent()
-  }, [calculatorForm, keepSourceTypeConsistent])
+  }, [calculatorForm, keepSourceTypeConsistent, subnets])
 
   const removeSubnet = useCallback(
     (id: number) => {
-      const currentSubnets = calculatorForm.state.values.subnets
-      if (currentSubnets.length <= 1) {
+      if (subnets.length <= 1) {
         return
       }
 
       calculatorForm.setFieldValue(
         "subnets",
-        currentSubnets.filter((subnet) => subnet.id !== id)
+        subnets.filter((subnet) => subnet.id !== id)
       )
       keepSourceTypeConsistent()
     },
-    [calculatorForm, keepSourceTypeConsistent]
+    [calculatorForm, keepSourceTypeConsistent, subnets]
   )
 
   const updateSubnet = useCallback(
     (id: number, field: "name" | "hosts", value: string) => {
-      const currentSubnets = calculatorForm.state.values.subnets
-      const nextSubnets = currentSubnets.map((subnet) =>
+      const nextSubnets = subnets.map((subnet) =>
         subnet.id === id
           ? {
               ...subnet,
@@ -98,7 +96,7 @@ export function useCalculatorPlanForm() {
       calculatorForm.setFieldValue("subnets", nextSubnets)
       keepSourceTypeConsistent()
     },
-    [calculatorForm, keepSourceTypeConsistent]
+    [calculatorForm, keepSourceTypeConsistent, subnets]
   )
 
   const moveSubnet = useCallback(
@@ -107,20 +105,18 @@ export function useCalculatorPlanForm() {
         return
       }
 
-      const currentSubnets = calculatorForm.state.values.subnets
-
       if (activeIndex < 0 || overIndex < 0) {
         return
       }
 
-      const nextSubnets = [...currentSubnets]
+      const nextSubnets = [...subnets]
       const [moved] = nextSubnets.splice(activeIndex, 1)
       nextSubnets.splice(overIndex, 0, moved)
 
       calculatorForm.setFieldValue("subnets", nextSubnets)
       keepSourceTypeConsistent()
     },
-    [calculatorForm, keepSourceTypeConsistent]
+    [calculatorForm, keepSourceTypeConsistent, subnets]
   )
 
   const replacePlan = useCallback(
