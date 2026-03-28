@@ -34,10 +34,9 @@ import {
   LogIn,
 } from "lucide-react"
 import { useAuth } from "@/components/core/auth-provider"
+import { cn } from "@/lib/utils"
 
-const navigation = [
-  { name: "Planner", href: "/app", icon: GitBranch },
-]
+const navigation = [{ name: "Planner", href: "/app", icon: GitBranch }]
 
 export function AppSidebar() {
   const pathname = usePathname()
@@ -47,7 +46,8 @@ export function AppSidebar() {
   const computedDisplayName = user?.user_metadata?.display_name || null
   const collapsed = state === "collapsed"
   const accountLabel = (computedDisplayName || user?.email) ?? "Guest"
-  const accountInitials = (computedDisplayName || user?.email)?.[0]?.toUpperCase() ?? "G"
+  const accountInitials =
+    (computedDisplayName || user?.email)?.[0]?.toUpperCase() ?? "G"
 
   const handleNavClick = () => {
     if (isMobile) {
@@ -55,11 +55,17 @@ export function AppSidebar() {
     }
   }
 
-  const items = isAuthenticated ? [...navigation, { name: "Designer", href: "/app/designer", icon: Sparkles }, { name: "Subnet History", href: "/app/history", icon: History }] : navigation
+  const items = isAuthenticated
+    ? [
+        ...navigation,
+        { name: "Designer", href: "/app/designer", icon: Sparkles },
+        { name: "Subnet History", href: "/app/history", icon: History },
+      ]
+    : navigation
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      <SidebarHeader className="h-16 justify-center gap-0 border-b border-sidebar-border px-2 py-0">
+      <SidebarHeader className="h-16 justify-center gap-0 border-b border-sidebar-border px-4 py-0">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary">
             <Network className="h-4 w-4 text-primary-foreground" />
@@ -98,56 +104,89 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="h-auto w-full justify-start gap-2 rounded-md px-1.5 py-1.5"
-            >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-medium">
-                {accountInitials}
-              </div>
-              {!collapsed && (
-                <>
-                  <div className="min-w-0 flex-1 text-left">
-                    <p className="truncate text-sm font-medium">{isAuthenticated ? "Signed in" : "Guest"}</p>
-                    <p className="truncate text-xs text-muted-foreground">{accountLabel}</p>
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton>
+              <Link
+                href="https://github.com/michqo/subnify"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center gap-2"
+              >
+                <GitBranch className="h-4 w-4" />
+                <span>Source Code</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="h-auto w-full justify-start gap-2 rounded-md px-1.5 py-1.5 border-0 border-t border-sidebar-border"
+                >
+                  <div
+                    className={cn(
+                      "flex shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-medium",
+                      collapsed ? "h-6 w-6" : "h-9 w-9"
+                    )}
+                  >
+                    {accountInitials}
                   </div>
-                  <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
-                </>
-              )}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" align="start" className="min-w-56">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/app/settings" onClick={handleNavClick}>
-                <Settings className="h-4 w-4" />
-                Settings
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/app/help" onClick={handleNavClick}>
-                <HelpCircle className="h-4 w-4" />
-                Help
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            {isAuthenticated ? (
-              <DropdownMenuItem variant="destructive" onSelect={() => void signOut()}>
-                <LogOut className="h-4 w-4" />
-                Sign out
-              </DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem onSelect={() => openAuthDialog(pathname)}>
-                <LogIn className="h-4 w-4" />
-                Sign in
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                  {!collapsed && (
+                    <>
+                      <div className="min-w-0 flex-1 text-left">
+                        <p className="truncate text-sm font-medium">
+                          {isAuthenticated ? "Signed in" : "Guest"}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {accountLabel}
+                        </p>
+                      </div>
+                      <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
+                    </>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                side="top"
+                align="start"
+                className="min-w-56"
+              >
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/app/settings" onClick={handleNavClick}>
+                    <Settings className="h-4 w-4" />
+                    Settings
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/app/help" onClick={handleNavClick}>
+                    <HelpCircle className="h-4 w-4" />
+                    Help
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {isAuthenticated ? (
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onSelect={() => void signOut()}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign out
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onSelect={() => openAuthDialog(pathname)}>
+                    <LogIn className="h-4 w-4" />
+                    Sign in
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
 
       <SidebarRail />
