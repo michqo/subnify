@@ -9,7 +9,29 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/components/core/auth-provider"
-import { useCalculationsQuery, useDeleteCalculationMutation } from "@/lib/queries/calculations"
+import {
+  useCalculationsQuery,
+  useDeleteCalculationMutation,
+} from "@/lib/queries/calculations"
+import { Skeleton } from "../ui/skeleton"
+
+function HistoryLoading() {
+  return (
+    <div className="rounded-lg border border-border bg-secondary/30 p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-64" />
+          <Skeleton className="h-4 w-52" />
+          <Skeleton className="h-3 w-40" />
+        </div>
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-9 w-9" />
+          <Skeleton className="h-9 w-20" />
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export function HistoryList() {
   const router = useRouter()
@@ -35,7 +57,8 @@ export function HistoryList() {
     try {
       await deleteCalculation(id)
     } catch (deleteError) {
-      const message = deleteError instanceof Error ? deleteError.message : "Delete failed."
+      const message =
+        deleteError instanceof Error ? deleteError.message : "Delete failed."
       toast.error(`Delete failed: ${message}`)
     }
   }
@@ -60,15 +83,19 @@ export function HistoryList() {
             {errorMessage ? (
               <p className="text-sm text-destructive">{errorMessage}</p>
             ) : isLoading ? (
-              <p className="text-sm text-muted-foreground">Loading history...</p>
+              <HistoryLoading />
             ) : records.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No saved calculations yet.</p>
+              <p className="text-sm text-muted-foreground">
+                No saved calculations yet.
+              </p>
             ) : (
               <motion.div layout className="space-y-3">
                 <AnimatePresence initial={false}>
                   {records.map((item) => {
                     const subnetCount =
-                      item.result_subnets.length > 0 ? item.result_subnets.length : (item.input_subnets?.length ?? 0)
+                      item.result_subnets.length > 0
+                        ? item.result_subnets.length
+                        : (item.input_subnets?.length ?? 0)
 
                     return (
                       <motion.div
@@ -83,22 +110,40 @@ export function HistoryList() {
                         <div className="flex items-start justify-between gap-4">
                           <div>
                             <div className="flex items-center gap-2">
-                              <p className="font-medium">{item.title ?? `${item.base_network}/${item.base_cidr}`}</p>
-                              <Badge variant={item.source_type === "ai_design" ? "secondary" : "outline"}>
-                                {item.source_type === "ai_design" ? "AI design" : "Manual"}
+                              <p className="font-medium">
+                                {item.title ??
+                                  `${item.base_network}/${item.base_cidr}`}
+                              </p>
+                              <Badge
+                                variant={
+                                  item.source_type === "ai_design"
+                                    ? "secondary"
+                                    : "outline"
+                                }
+                              >
+                                {item.source_type === "ai_design"
+                                  ? "AI design"
+                                  : "Manual"}
                               </Badge>
                             </div>
                             <p className="text-sm text-muted-foreground">
-                              {item.base_network}/{item.base_cidr} • {subnetCount} subnets
+                              {item.base_network}/{item.base_cidr} •{" "}
+                              {subnetCount} subnets
                             </p>
-                            {item.source_type === "ai_design" && item.ai_prompt ? (
-                              <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">Prompt: {item.ai_prompt}</p>
+                            {item.source_type === "ai_design" &&
+                            item.ai_prompt ? (
+                              <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                                Prompt: {item.ai_prompt}
+                              </p>
                             ) : null}
-                            <p className="mt-1 text-xs text-muted-foreground">{new Date(item.created_at).toLocaleString()}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {new Date(item.created_at).toLocaleString()}
+                            </p>
                           </div>
                           <div className="flex items-center gap-2">
                             <Button
                               type="button"
+                              className="cursor-pointer"
                               variant="outline"
                               size="icon"
                               onClick={() => void handleDelete(item.id)}
@@ -114,8 +159,10 @@ export function HistoryList() {
                             <Button
                               type="button"
                               size="sm"
-                              className="gap-1.5"
-                              onClick={() => router.push(`/app?history=${item.id}`)}
+                              className="gap-1.5 cursor-pointer"
+                              onClick={() =>
+                                router.push(`/app?history=${item.id}`)
+                              }
                             >
                               View plan
                             </Button>
