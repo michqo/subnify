@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { Check, Copy, Download, ZoomIn, ZoomOut } from "lucide-react"
+import { Check, Copy, Download } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -57,28 +57,6 @@ function AddressCardItem({
   )
 }
 
-type CalculatorResultsSectionProps = {
-  results: VlsmAllocation[]
-  activeView: PlanView
-  onViewChange: (value: string) => void
-  copied: boolean
-  exporting: boolean
-  onCopyResults: () => void
-  onExportPdf: () => void
-  zoom: number
-  onZoomOut: () => void
-  onZoomIn: () => void
-  selectedSubnet: number | null
-  onToggleSubnet: (subnetId: number) => void
-  subnets: SubnetInput[]
-  baseNetwork: string
-  baseCidr: string
-  totalAddresses: number
-  allocatedAddresses: number
-  totalRequired: number
-  totalUsable: number
-}
-
 const COLORS = [
   {
     barBg: "bg-chart-1/60 dark:bg-chart-1/40",
@@ -118,6 +96,25 @@ const COLORS = [
   },
 ] as const
 
+type CalculatorResultsSectionProps = {
+  results: VlsmAllocation[]
+  activeView: PlanView
+  onViewChange: (value: string) => void
+  copied: boolean
+  exporting: boolean
+  onCopyResults: () => void
+  onExportPdf: () => void
+  selectedSubnet: number | null
+  onToggleSubnet: (subnetId: number) => void
+  subnets: SubnetInput[]
+  baseNetwork: string
+  baseCidr: string
+  totalAddresses: number
+  allocatedAddresses: number
+  totalRequired: number
+  totalUsable: number
+}
+
 export function CalculatorResultsSection({
   results,
   activeView,
@@ -126,9 +123,6 @@ export function CalculatorResultsSection({
   exporting,
   onCopyResults,
   onExportPdf,
-  zoom,
-  onZoomOut,
-  onZoomIn,
   selectedSubnet,
   onToggleSubnet,
   subnets,
@@ -254,21 +248,11 @@ export function CalculatorResultsSection({
                 Run a calculation to open the visualizer view.
               </div>
             ) : null}
-            <div className="flex items-center justify-end gap-2">
-              <Button variant="outline" size="icon" className="h-8 w-8" disabled={results.length === 0} onClick={onZoomOut}>
-                <ZoomOut className="h-4 w-4" />
-              </Button>
-              <span className="w-12 text-center text-sm text-muted-foreground">{(zoom * 100).toFixed(0)}%</span>
-              <Button variant="outline" size="icon" className="h-8 w-8" disabled={results.length === 0} onClick={onZoomIn}>
-                <ZoomIn className="h-4 w-4" />
-              </Button>
-            </div>
 
             <div className="space-y-2">
               <p className="text-sm font-medium text-muted-foreground">Linear Address Space</p>
               <motion.div
                 className="relative h-16 overflow-hidden rounded-lg border border-border bg-muted/50 dark:bg-secondary/30"
-                style={{ minWidth: `${100 * zoom}%` }}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.16, ease: "easeOut" }}
@@ -294,12 +278,12 @@ export function CalculatorResultsSection({
                     >
                       {widthPercent > 10 ? (
                         <div className="flex h-full flex-col items-center justify-center p-1">
-                          <span className="truncate text-xs font-semibold text-white drop-shadow-sm">{result.name}</span>
-                          <span className="text-[11px] text-white/95 drop-shadow-sm">/{result.cidr}</span>
+                          <span className="truncate text-xs font-semibold drop-shadow-sm">{result.name}</span>
+                          <span className="text-[11px] drop-shadow-sm">/{result.cidr}</span>
                         </div>
                       ) : widthPercent > 3 ? (
                         <div className="flex h-full items-center justify-center p-1">
-                          <span className="text-[10px] font-semibold text-white drop-shadow-sm">/{result.cidr}</span>
+                          <span className="text-xs font-semibold drop-shadow-sm">{result.name.slice(4)}</span>
                         </div>
                       ) : null}
                     </div>

@@ -76,7 +76,6 @@ export function useCalculatorPageController({
   const [results, setResults] = useState<VlsmAllocation[]>([])
   const { copied, copyResults } = useCopyResults()
   const [exporting, setExporting] = useState(false)
-  const [zoom, setZoom] = useState(1)
   const [selectedSubnet, setSelectedSubnet] = useState<number | null>(null)
 
   useEffect(() => {
@@ -179,14 +178,6 @@ export function useCalculatorPageController({
   const totalAddresses = totalAddressesFromCidr(formValues.baseCidr)
   const allocatedAddresses = results.reduce((acc, result) => acc + result.blockSize, 0)
 
-  const handleZoomOut = useCallback(() => {
-    setZoom((current) => Math.max(0.5, current - 0.25))
-  }, [])
-
-  const handleZoomIn = useCallback(() => {
-    setZoom((current) => Math.min(2, current + 0.25))
-  }, [])
-
   const handleToggleSubnet = useCallback((subnetId: number) => {
     setSelectedSubnet((current) => (current === subnetId ? null : subnetId))
   }, [])
@@ -198,9 +189,6 @@ export function useCalculatorPageController({
     onCopyResults,
     exporting,
     exportPdf,
-    zoom,
-    handleZoomOut,
-    handleZoomIn,
     selectedSubnet,
     handleToggleSubnet,
     totalUsable,

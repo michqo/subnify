@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import type { SubnetInput } from "@/lib/state/subnet-plan-types"
+import { AnimatePresence, motion } from "framer-motion"
+import { Checkbox } from "../ui/checkbox"
 
 type SubnetRowProps = {
   subnet: SubnetInput
@@ -147,30 +149,40 @@ export function CalculatorInputSection({
               </Field>
             </div>
 
-            {isAuthenticated && (shouldSaveToCloud || isCloudLinkedPlan) ? (
-              <Field className="sm:col-span-2 lg:col-span-2">
-                <FieldLabel htmlFor="planName">Plan name</FieldLabel>
-                <Input
-                  id="planName"
-                  value={planName}
-                  onChange={(event) => onPlanNameChange(event.target.value)}
-                  placeholder="Branch office rollout"
-                />
-              </Field>
-            ) : null}
+            <div className="relative grid sm:col-span-2 lg:col-span-2">
+              <AnimatePresence initial={false}>
+                {isAuthenticated && (shouldSaveToCloud || isCloudLinkedPlan) ? (
+                  <motion.div
+                    key="planNameField"
+                    initial={{ opacity: 0, y: -10, position: "absolute", width: "100%" }}
+                    animate={{ opacity: 1, y: 0, position: "static", width: "100%" }}
+                    exit={{ opacity: 0, y: -10, position: "absolute", width: "100%" }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <Field>
+                      <FieldLabel htmlFor="planName">Plan name</FieldLabel>
+                      <Input
+                      id="planName"
+                      value={planName}
+                      onChange={(event) => onPlanNameChange(event.target.value)}
+                      placeholder="Branch office rollout"
+                      />
+                    </Field>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+            </div>
 
             {isAuthenticated && !isAiPlan && !isCloudLinkedPlan ? (
-              <Field>
-                <label htmlFor="saveToCloud" className="flex items-center gap-2 text-sm font-medium">
-                  <input
-                    id="saveToCloud"
-                    type="checkbox"
-                    checked={shouldSaveToCloud}
-                    onChange={(event) => onShouldSaveToCloudChange(event.target.checked)}
-                    className="size-4"
-                  />
+              <Field orientation="horizontal">
+                <Checkbox
+                  id="saveToCloud"
+                  checked={shouldSaveToCloud}
+                  onCheckedChange={onShouldSaveToCloudChange}
+                />
+                <FieldLabel htmlFor="saveToCloud">
                   Save this manual calculation to cloud history
-                </label>
+                </FieldLabel>
               </Field>
             ) : null}
 

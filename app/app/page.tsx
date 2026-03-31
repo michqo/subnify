@@ -93,9 +93,6 @@ function CalculatorPageContent() {
     onCopyResults,
     exporting,
     exportPdf,
-    zoom,
-    handleZoomOut,
-    handleZoomIn,
     selectedSubnet,
     handleToggleSubnet,
     totalUsable,
@@ -190,9 +187,6 @@ function CalculatorPageContent() {
               exporting={exporting}
               onCopyResults={onCopyResults}
               onExportPdf={exportPdf}
-              zoom={zoom}
-              onZoomOut={handleZoomOut}
-              onZoomIn={handleZoomIn}
               selectedSubnet={selectedSubnet}
               onToggleSubnet={handleToggleSubnet}
               subnets={formValues.subnets}
