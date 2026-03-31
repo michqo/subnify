@@ -12,7 +12,7 @@ function getSupabaseConfig() {
   return { supabaseUrl, supabaseAnonKey }
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig()
 
   const response = NextResponse.next({
