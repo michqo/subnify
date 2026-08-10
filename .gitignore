@@ -38,3 +38,7 @@ next-env.d.ts
 
 # supabase
 supabase/.temp
+
+# local agent workspaces
+/.worktrees/
+/.superpowers/
