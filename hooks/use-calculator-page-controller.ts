@@ -8,6 +8,7 @@ import { totalAddressesFromCidr, type VlsmAllocation } from "@/lib/vlsm"
 import { useCopyResults } from "@/hooks/use-copy-results"
 import type { SubnetInput } from "@/lib/state/subnet-plan-types"
 import { diagnosePlan } from "@/lib/planner/diagnostics"
+import type { PlanView } from "@/lib/plan-view"
 
 type SaveCalculationInput = {
   sourceType?: "manual" | "ai_design" | "history"
@@ -47,8 +48,8 @@ type UseCalculatorPageControllerArgs = {
   setShouldSaveToCloud: (value: boolean) => void
   setActiveCloudPlanId: (value: string | null) => void
   emailConfirmedFromQuery: boolean
-  buildAppUrl: (view?: "table" | "cards" | "visualizer") => string
-  resolveViewFromQuery: () => "table" | "cards" | "visualizer"
+  buildAppUrl: (view?: PlanView) => string
+  resolveViewFromQuery: () => PlanView
   replaceToCurrentView: () => void
 }
 

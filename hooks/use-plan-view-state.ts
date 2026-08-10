@@ -2,16 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { type ReadonlyURLSearchParams, useRouter } from "next/navigation"
+import { buildPlanViewUrl, parsePlanView, type PlanView } from "@/lib/plan-view"
 
-export type PlanView = "table" | "cards" | "visualizer"
-
-function toPlanView(value: string | null): PlanView {
-  if (value === "cards" || value === "visualizer") {
-    return value
-  }
-
-  return "table"
-}
+export type { PlanView } from "@/lib/plan-view"
 
 export function usePlanViewState(searchParams: ReadonlyURLSearchParams) {
   const router = useRouter()
@@ -19,14 +12,14 @@ export function usePlanViewState(searchParams: ReadonlyURLSearchParams) {
 
   const buildAppUrl = useCallback((view?: PlanView) => {
     if (!view || view === "table") {
-      return "/app"
+      return buildPlanViewUrl("table")
     }
 
-    return `/app?view=${view}`
+    return buildPlanViewUrl(view)
   }, [])
 
   const resolveViewFromQuery = useCallback((): PlanView => {
-    return toPlanView(searchParams.get("view"))
+    return parsePlanView(searchParams.get("view"))
   }, [searchParams])
 
   useEffect(() => {
@@ -35,7 +28,7 @@ export function usePlanViewState(searchParams: ReadonlyURLSearchParams) {
 
   const handleViewChange = useCallback(
     (value: string) => {
-      const nextView = toPlanView(value)
+      const nextView = parsePlanView(value)
       setActiveView(nextView)
       router.replace(buildAppUrl(nextView), { scroll: false })
     },
