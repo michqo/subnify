@@ -232,7 +232,7 @@ expect(diagnosePlan({
 })
 ```
 
-For `192.168.10.10/24`, expect blocking code `base_not_aligned`. For two 126-host requirements inside `/24`, expect `capacity_overflow`.
+For `192.168.10.10/24`, expect blocking code `base_not_aligned`. For three 126-host requirements inside `/24`, expect `capacity_overflow`.
 
 - [ ] **Step 2: Run tests and verify failure**
 
