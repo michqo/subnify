@@ -21,7 +21,8 @@ describe("MiqalHeader", () => {
   it("exposes Miqal identity and core application routes", () => {
     render(<MiqalHeader variant="app" />)
 
-    expect(screen.getByRole("link", { name: /miqal home/i })).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Miqal home" })).toHaveAttribute("href", "https://miqal.xyz")
+    expect(screen.getByRole("link", { name: "Subnify home" })).toHaveAttribute("href", "/")
     expect(screen.getByRole("link", { name: "Planner" })).toHaveAttribute("href", "/app")
     expect(screen.getByRole("link", { name: "History" })).toHaveAttribute("href", "/app/history")
     expect(screen.getByRole("link", { name: "Help" })).toHaveAttribute("href", "/app/help")

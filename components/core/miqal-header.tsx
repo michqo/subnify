@@ -40,18 +40,16 @@ export function MiqalHeader({ variant }: { variant: "public" | "app" }) {
     <header className="sticky top-0 z-50 border-b border-border/70 bg-background/85 backdrop-blur-xl">
       <div className="mx-auto flex h-14 max-w-[1600px] items-center justify-between gap-4 px-4 lg:px-6">
         <div className="flex min-w-0 items-center gap-7">
-          <Link
-            href="https://miqal.xyz"
-            aria-label="Miqal home"
-            className="group shrink-0 font-mono text-sm font-bold tracking-tight"
-          >
-            <span className="text-primary transition-colors group-hover:text-primary/70">/</span>
-            <span>miqal</span>
+          <div className="flex shrink-0 items-center font-mono text-sm font-bold tracking-tight">
+            <Link href="https://miqal.xyz" aria-label="Miqal home" className="group">
+              <span className="text-primary transition-colors group-hover:text-primary/70">/</span>
+              <span>miqal</span>
+            </Link>
             <span className="px-1.5 text-muted-foreground">/</span>
-            <span className="font-medium text-muted-foreground transition-colors group-hover:text-foreground">
+            <Link href="/" aria-label="Subnify home" className="font-medium text-muted-foreground transition-colors hover:text-foreground">
               subnify
-            </span>
-          </Link>
+            </Link>
+          </div>
 
           <nav aria-label="Product navigation" className="hidden items-center gap-1 md:flex">
             {links.map((link) => {
