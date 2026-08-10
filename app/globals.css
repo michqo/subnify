@@ -3,8 +3,62 @@
 @import "shadcn/tailwind.css";
 
 :root {
-  --font-inter: var(--font-subnify-sans);
-  --font-jetbrains-mono: var(--font-subnify-mono);
+  --font-inter: var(--font-geist-sans);
+  --font-jetbrains-mono: var(--font-geist-mono);
+
+  /* @miqal/theme 0.1.1 labels its hue-212 palette as blue, but browsers
+     render it cyan. Keep package structure while matching its documented blue. */
+  --primary: #2563eb;
+  --primary-foreground: #eff6ff;
+  --accent: #eff6ff;
+  --accent-foreground: #172554;
+  --ring: #60a5fa;
+  --chart-1: #bfdbfe;
+  --chart-2: #93c5fd;
+  --chart-3: #60a5fa;
+  --chart-4: #2563eb;
+  --chart-5: #1d4ed8;
+  --sidebar-primary: #2563eb;
+  --sidebar-primary-foreground: #eff6ff;
+  --sidebar-accent: #eff6ff;
+  --sidebar-accent-foreground: #172554;
+  --sidebar-ring: #60a5fa;
+}
+
+.dark {
+  --font-inter: var(--font-geist-sans);
+  --font-jetbrains-mono: var(--font-geist-mono);
+  --primary: #60a5fa;
+  --primary-foreground: #172554;
+  --accent: #172554;
+  --accent-foreground: #dbeafe;
+  --ring: #3b82f6;
+  --chart-1: #dbeafe;
+  --chart-2: #93c5fd;
+  --chart-3: #60a5fa;
+  --chart-4: #3b82f6;
+  --chart-5: #1d4ed8;
+  --sidebar-primary: #60a5fa;
+  --sidebar-primary-foreground: #172554;
+  --sidebar-accent: #172554;
+  --sidebar-accent-foreground: #dbeafe;
+  --sidebar-ring: #3b82f6;
+}
+
+@layer base {
+  body {
+    background-image:
+      radial-gradient(ellipse 80% 60% at 80% 0%, rgb(37 99 235 / 15%) 0%, transparent 65%),
+      radial-gradient(ellipse 55% 45% at 10% 100%, rgb(37 99 235 / 8%) 0%, transparent 60%),
+      radial-gradient(var(--dot-color) 1px, transparent 1px);
+
+    &:is(.dark *) {
+      background-image:
+        radial-gradient(ellipse 80% 60% at 80% 0%, rgb(96 165 250 / 20%) 0%, transparent 65%),
+        radial-gradient(ellipse 55% 45% at 10% 100%, rgb(96 165 250 / 12%) 0%, transparent 60%),
+        radial-gradient(var(--dot-color) 1px, transparent 1px);
+    }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
