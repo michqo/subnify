@@ -107,9 +107,10 @@ export default function SettingsPage() {
   }, [usernameMessage, passwordMessage])
 
   return (
-    <div className="flex-1 overflow-auto p-4 lg:p-6">
+    <div className="flex-1 overflow-auto px-4 py-6 lg:px-6">
       <div className="mx-auto max-w-2xl space-y-6">
-        <Card className="border-border">
+        <div><p className="font-mono text-[11px] uppercase tracking-[0.14em] text-primary">Preferences</p><h1 className="mt-1 text-2xl font-semibold tracking-tight">Settings</h1></div>
+        <Card className="rounded-md border-border">
           <CardHeader>
             <CardTitle className="text-base">Appearance</CardTitle>
           </CardHeader>
@@ -128,7 +129,7 @@ export default function SettingsPage() {
 
         {/* Username Section */}
         {isAuthenticated ? (
-          <Card className="border-border">
+          <Card className="rounded-md border-border">
             <CardHeader>
               <CardTitle className="text-base">Profile</CardTitle>
             </CardHeader>
@@ -201,7 +202,7 @@ export default function SettingsPage() {
         ) : null}
 
         {canChangePassword ? (
-          <Card className="border-border">
+          <Card className="rounded-md border-border">
             <CardHeader>
               <CardTitle className="text-base">Security</CardTitle>
             </CardHeader>
@@ -235,6 +236,7 @@ export default function SettingsPage() {
                       </passwordForm.Field>
                       <button
                         type="button"
+                        aria-label={showNewPassword ? "Hide new password" : "Show new password"}
                         onClick={() => setShowNewPassword(!showNewPassword)}
                         className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       >
@@ -265,6 +267,7 @@ export default function SettingsPage() {
                       </passwordForm.Field>
                       <button
                         type="button"
+                        aria-label={showConfirmPassword ? "Hide confirmed password" : "Show confirmed password"}
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                         className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       >

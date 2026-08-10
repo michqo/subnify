@@ -4,22 +4,41 @@ type ExportVlsmPdfArgs = {
   results: VlsmAllocation[]
   baseNetwork: string
   baseCidr: string
+  planName?: string | null
+  createdAt?: Date
 }
 
-export async function exportVlsmPdf({ results, baseNetwork, baseCidr }: ExportVlsmPdfArgs) {
+export function buildPdfFilename(planName: string | null, createdAt: Date): string {
+  const slug = (planName ?? "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+  const date = `${createdAt.getFullYear()}${String(createdAt.getMonth() + 1).padStart(2, "0")}${String(createdAt.getDate()).padStart(2, "0")}`
+  return `subnify-${slug || "plan"}-${date}.pdf`
+}
+
+export async function exportVlsmPdf({ results, baseNetwork, baseCidr, planName = null, createdAt = new Date() }: ExportVlsmPdfArgs) {
   const [{ jsPDF }, { default: autoTable }] = await Promise.all([import("jspdf"), import("jspdf-autotable")])
 
   const document = new jsPDF({ unit: "pt", format: "a4" })
-  const createdAt = new Date().toLocaleString()
+  const createdLabel = createdAt.toLocaleString()
 
+  document.setTextColor(37, 99, 235)
+  document.setFont("helvetica", "bold")
   document.setFontSize(16)
-  document.text("Subnify VLSM Report", 40, 44)
+  document.text("/miqal / subnify", 40, 40)
+  document.setTextColor(15, 23, 42)
+  document.setFont("helvetica", "normal")
+  document.setFontSize(13)
+  document.text(planName?.trim() || "IPv4 address plan", 40, 60)
   document.setFontSize(10)
-  document.text(`Generated: ${createdAt}`, 40, 62)
-  document.text(`Base Network: ${baseNetwork}/${baseCidr}`, 40, 76)
+  document.text(`Generated: ${createdLabel}`, 40, 78)
+  document.text(`Base network: ${baseNetwork}/${baseCidr}`, 40, 92)
 
   autoTable(document, {
-    startY: 96,
+    startY: 112,
     head: [["Subnet", "Network", "CIDR", "Mask", "Host Range", "Broadcast", "Usable"]],
     body: results.map((row) => [
       row.name,
@@ -31,7 +50,7 @@ export async function exportVlsmPdf({ results, baseNetwork, baseCidr }: ExportVl
       String(row.usableHosts),
     ]),
     styles: { fontSize: 8, cellPadding: 4 },
-    headStyles: { fillColor: [30, 41, 59] },
+    headStyles: { fillColor: [37, 99, 235] },
   })
 
   const tableEnd = (document as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 96
@@ -102,5 +121,5 @@ export async function exportVlsmPdf({ results, baseNetwork, baseCidr }: ExportVl
     barY + 44
   )
 
-  document.save(`subnify-vlsm-${Date.now()}.pdf`)
+  document.save(buildPdfFilename(planName, createdAt))
 }

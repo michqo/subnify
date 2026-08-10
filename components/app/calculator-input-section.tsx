@@ -55,6 +55,7 @@ function SubnetRow({
         onClick={() => onRemoveSubnet(subnet.id)}
         disabled={subnetCount === 1}
         className="shrink-0 text-muted-foreground hover:text-destructive"
+        aria-label={`Remove ${subnet.name || `subnet ${index + 1}`}`}
       >
         <Trash2 className="h-4 w-4" />
       </Button>

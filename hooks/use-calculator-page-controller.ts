@@ -188,11 +188,14 @@ export function useCalculatorPageController({
         results,
         baseNetwork: formValues.baseNetwork,
         baseCidr: formValues.baseCidr,
+        planName,
       })
+    } catch {
+      toast.error("PDF export failed. Your plan is unchanged.")
     } finally {
       setExporting(false)
     }
-  }, [exporting, formValues.baseCidr, formValues.baseNetwork, results])
+  }, [exporting, formValues.baseCidr, formValues.baseNetwork, planName, results])
 
   const onCopyResults = useCallback(() => {
     copyResults(results)
