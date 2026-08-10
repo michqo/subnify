@@ -1,44 +1,8 @@
-"use client"
-
-import { Button } from "@/components/ui/button"
 import { ArrowRight } from "lucide-react"
-import { motion } from "framer-motion"
-import { itemVariants, sectionVariants } from "./motion"
 import Link from "next/link"
 
+import { Button } from "@/components/ui/button"
+
 export function CTASection() {
-  return (
-    <motion.section
-      className="border-t border-border py-24 sm:py-32"
-      variants={sectionVariants}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, amount: 0.2 }}
-    >
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-8 sm:p-16">
-          {/* Background pattern */}
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-size-[32px_32px]" />
-          
-          <div className="relative mx-auto max-w-2xl text-center">
-            <motion.h2 variants={itemVariants} className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
-              Start a subnet
-              <span className="text-primary"> planning session</span>
-            </motion.h2>
-            <motion.p variants={itemVariants} className="mx-auto mt-4 max-w-xl text-pretty text-muted-foreground">
-              Use Subnify to draft and review CIDR/VLSM allocations directly in the browser.
-            </motion.p>
-            <motion.div variants={itemVariants} className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link href="/app">
-                <Button size="lg" className="gap-2 cursor-pointer">
-                  Open Calculator
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-            </motion.div>
-          </div>
-        </div>
-      </div>
-    </motion.section>
-  )
+  return <section className="mx-auto max-w-4xl px-4 py-20 text-center sm:px-6"><p className="font-mono text-xs uppercase tracking-[0.16em] text-primary">Ready when the network is</p><h2 className="mt-4 text-3xl font-semibold tracking-tight">Turn requirements into an address plan.</h2><p className="mx-auto mt-4 max-w-2xl text-muted-foreground">Manual planning stays free and immediate. Sign in only when you want cloud history or generated requirements.</p><Button asChild size="lg" className="mt-8"><Link href="/app">Start planning <ArrowRight className="size-4" /></Link></Button></section>
 }

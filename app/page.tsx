@@ -1,7 +1,6 @@
 import { Metadata } from "next"
 import { HeroSection } from "@/components/home/hero-section"
-import { FeaturesSection } from "@/components/home/features-section"
-import { CalculatorPreview } from "@/components/home/calculator-preview"
+import { ProductProof } from "@/components/home/product-proof"
 import { CTASection } from "@/components/home/cta-section"
 import { Footer } from "@/components/home/footer"
 
@@ -13,11 +12,10 @@ export const metadata: Metadata = {
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <main>
         <HeroSection />
-        <FeaturesSection />
-        <CalculatorPreview />
+        <ProductProof />
         <CTASection />
       </main>
       <Footer />

@@ -1,87 +1,48 @@
-"use client"
-
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { ArrowRight, Calculator, Network } from "lucide-react"
-import { motion, type Variants } from "framer-motion"
-import { itemVariants } from "./motion"
+import { ArrowRight } from "lucide-react"
 import Link from "next/link"
 
-const HERO_EASE = [0.25, 0.1, 0.25, 1] as const
+import { Button } from "@/components/ui/button"
+import { diagnosePlan, explainAllocation } from "@/lib/planner/diagnostics"
 
-const heroSectionVariants: Variants = {
-  hidden: { opacity: 0, y: 8 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.18,
-      ease: HERO_EASE,
-      staggerChildren: 0.06,
-    },
-  },
-}
+const preview = diagnosePlan({
+  baseNetwork: "192.168.10.0",
+  baseCidr: "24",
+  subnets: [
+    { id: 1, name: "Engineering", hosts: 62 },
+    { id: 2, name: "Guest Wi-Fi", hosts: 40 },
+  ],
+})
 
 export function HeroSection() {
   return (
-    <motion.section
-      className="relative overflow-hidden"
-      variants={heroSectionVariants}
-      initial="hidden"
-      animate="visible"
-    >
-      <div className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8 lg:py-40">
-        <div className="mx-auto max-w-3xl text-center">
-          <motion.div variants={itemVariants} className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-secondary/50 px-4 py-1.5 text-sm text-muted-foreground">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-            </span>
-            VLSM subnet planning for real networks
-            <Badge variant="outline" className="ml-1">Alpha</Badge>
-          </motion.div>
-          
-          <motion.h1 variants={itemVariants} className="text-balance text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-            Design and visualize subnet layouts{" "}
-            <span className="bg-linear-to-r from-primary to-cyan-700 bg-clip-text text-transparent">in seconds</span>
-          </motion.h1>
-          
-          <motion.p variants={itemVariants} className="mx-auto mt-6 max-w-2xl text-pretty text-lg text-muted-foreground sm:text-xl">
-            Plan VLSM networks fast, avoid overlaps, and ship cleaner subnet designs.
-          </motion.p>
-          
-          <motion.div variants={itemVariants} className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Link href="/app">
-              <Button size="lg" className="gap-2 cursor-pointer">
-                <Calculator className="h-4 w-4" />
-                Start Calculating
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-            <Link href="#calculator">
-              <Button variant="outline" size="lg" className="gap-2">
-                <Network className="h-4 w-4" />
-                View Demo
-              </Button>
-            </Link>
-          </motion.div>
+    <section className="mx-auto grid min-h-[calc(100svh-3.5rem)] max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[.9fr_1.1fr] lg:px-8">
+      <div>
+        <p className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-primary">IPv4 planning workspace</p>
+        <h1 className="mt-5 max-w-xl text-5xl font-bold tracking-[-0.04em] text-balance sm:text-6xl">Address space, made legible.</h1>
+        <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
+          Build VLSM plans, see allocation pressure, and understand every CIDR decision without leaving the workflow.
+        </p>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Button asChild size="lg"><Link href="/app">Open planner <ArrowRight className="size-4" /></Link></Button>
+          <Button asChild size="lg" variant="outline"><Link href="#how-it-works">How it works</Link></Button>
         </div>
-
-        {/* Highlights */}
-        <motion.div variants={itemVariants} className="mx-auto mt-20 grid max-w-4xl grid-cols-2 gap-8 sm:grid-cols-4">
-          {[
-            { value: "CIDR + VLSM", label: "Calculation model" },
-            { value: "Subnet masks", label: "Derived per block" },
-            { value: "Host ranges", label: "Usable boundaries" },
-            { value: "Hierarchy view", label: "Allocation context" },
-          ].map((stat) => (
-            <motion.div key={stat.label} variants={itemVariants} className="text-center">
-              <div className="text-lg font-bold text-primary sm:text-2xl">{stat.value}</div>
-              <div className="mt-1 text-sm text-muted-foreground">{stat.label}</div>
-            </motion.div>
-          ))}
-        </motion.div>
       </div>
-    </motion.section>
+
+      <div className="rounded-md border border-border bg-card/90 shadow-2xl shadow-primary/5">
+        <div className="flex items-center justify-between border-b border-border px-4 py-3 font-mono text-xs">
+          <span>branch-office.plan</span><span className="text-emerald-600 dark:text-emerald-400">valid</span>
+        </div>
+        <div className="space-y-4 p-4 sm:p-5">
+          <div className="grid grid-cols-[1fr_4rem] gap-2 font-mono text-sm"><span className="sr-only">192.168.10.0/24</span><div className="rounded-sm border border-input bg-background px-3 py-2">192.168.10.0</div><div className="rounded-sm border border-input bg-background px-3 py-2">/24</div></div>
+          {preview.allocations.map((allocation) => (
+            <div key={allocation.name} className="grid grid-cols-[1fr_auto] gap-3 border-b border-border pb-3"><span className="text-sm font-medium">{allocation.name}</span><span className="font-mono text-xs text-muted-foreground">{allocation.requiredHosts} hosts · /{allocation.cidr}</span></div>
+          ))}
+          <div className="border-l-2 border-primary bg-accent/50 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+            {explainAllocation(preview.allocations[0])}
+          </div>
+          <div className="grid grid-cols-3 gap-3 border-t border-border pt-4 font-mono text-xs"><div><span className="block text-lg font-semibold text-foreground">2</span>subnets</div><div><span className="block text-lg font-semibold text-foreground">50%</span>allocated</div><div><span className="block text-lg font-semibold text-foreground">128</span>free</div></div>
+        </div>
+      </div>
+    </section>
   )
 }
