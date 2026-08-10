@@ -5,6 +5,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { PlannerWorkspace } from "@/components/app/planner-workspace"
 import { diagnosePlan } from "@/lib/planner/diagnostics"
 
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/app",
+  useRouter: () => ({ replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}))
+
+vi.mock("@/components/core/auth-provider", () => ({
+  useAuth: () => ({ isAuthenticated: false, openAuthDialog: vi.fn(), user: null }),
+}))
+
 const validDiagnostics = diagnosePlan({
   baseNetwork: "192.168.10.0",
   baseCidr: "24",

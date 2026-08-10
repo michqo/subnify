@@ -13,7 +13,6 @@ import { usePlanPersistence } from "@/hooks/use-plan-persistence"
 import { useHistoryRestoration } from "@/hooks/use-history-restoration"
 import { CalculatorResultsSection } from "@/components/app/calculator-results-section"
 import { CalculatorInputSection } from "@/components/app/calculator-input-section"
-import { useAiDesignApplication } from "@/hooks/use-ai-design-application"
 import { useCalculatorPlanForm } from "@/hooks/use-calculator-plan-form"
 import { useCalculatorPageController } from "@/hooks/use-calculator-page-controller"
 import { PlannerWorkspace } from "@/components/app/planner-workspace"
@@ -53,7 +52,6 @@ function CalculatorPageContent() {
     saveSuccessMessage,
   })
   const isEditingAiCloudPlan = isAiPlan && isCloudLinkedPlan
-  const shouldApplyAiDesign = searchParams.get("aiDesign") === "1"
   const historyIdFromQuery = searchParams.get("history")
   const emailConfirmedFromQuery = searchParams.get("emailConfirmed") === "1"
   const updateSuccessMessage = "Plan updated in cloud history."
@@ -105,15 +103,6 @@ function CalculatorPageContent() {
     replaceToCurrentView,
   })
 
-  useAiDesignApplication({
-    shouldApplyAiDesign,
-    replaceToCurrentView,
-    replacePlan,
-    setResults,
-    setPlanName,
-    setActiveCloudPlanId,
-  })
-
   useHistoryRestoration({
     historyId: historyIdFromQuery,
     isAuthenticated,
@@ -145,6 +134,12 @@ function CalculatorPageContent() {
         onApplyTemplate={(plan) => {
           replacePlan(plan)
           setPlanName(plan.suggestedTitle ?? "")
+          setResults([])
+        }}
+        onApplyRequirements={(plan) => {
+          replacePlan(plan)
+          setPlanName(plan.suggestedTitle ?? "")
+          setActiveCloudPlanId(null)
           setResults([])
         }}
         editor={
