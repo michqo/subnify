@@ -6,11 +6,11 @@ import { Metadata } from "next";
 import { LayoutShell } from "@/components/ui/layout-shell";
 import { Providers } from "@/components/core/providers";
 
-const inter = Inter({subsets:['latin'],variable:'--font-sans'})
+const inter = Inter({ subsets: ["latin"], variable: "--font-subnify-sans" })
 
 const fontMono = Geist_Mono({
   subsets: ["latin"],
-  variable: "--font-mono",
+  variable: "--font-subnify-mono",
 })
 
 export const metadata: Metadata = {
@@ -59,7 +59,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", inter.variable)}
+      className={cn("antialiased", fontMono.variable, inter.variable)}
     >
       <body>
         <Providers>
