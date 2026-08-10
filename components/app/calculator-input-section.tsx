@@ -4,7 +4,6 @@ import { Calculator, Plus, Trash2 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import type { SubnetInput } from "@/lib/state/subnet-plan-types"
@@ -82,6 +81,7 @@ type CalculatorInputSectionProps = {
   onRemoveSubnet: (id: number) => void
   onSubmit: () => void
   onReset: () => void
+  canCalculate: boolean
 }
 
 export function CalculatorInputSection({
@@ -103,17 +103,18 @@ export function CalculatorInputSection({
   onRemoveSubnet,
   onSubmit,
   onReset,
+  canCalculate,
 }: CalculatorInputSectionProps) {
   return (
-    <Card className="border-border">
-      <CardHeader className="flex flex-row items-center justify-between pb-4">
+    <div>
+      <div className="flex flex-row items-center justify-between border-b border-border pb-4">
         <div className="flex items-center gap-2">
-          <CardTitle className="text-base">Network Configuration</CardTitle>
+          <h2 className="font-mono text-sm font-semibold">Network input</h2>
           {isEditingAiCloudPlan ? <Badge variant="secondary">Editing AI design plan</Badge> : null}
           {!isEditingAiCloudPlan && isCloudLinkedPlan ? <Badge variant="outline">Editing saved plan</Badge> : null}
         </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
+      </div>
+      <div className="space-y-6 pt-5">
         <form
           className="space-y-6"
           onSubmit={(event) => {
@@ -232,14 +233,14 @@ export function CalculatorInputSection({
               <Button type="reset" variant="outline" className="h-11">
                 Reset
               </Button>
-              <Button type="submit" className="h-11 gap-2">
+              <Button type="submit" className="h-11 gap-2" disabled={!canCalculate}>
                 <Calculator className="h-4 w-4" />
                 Calculate VLSM
               </Button>
             </Field>
           </FieldGroup>
         </form>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

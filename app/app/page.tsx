@@ -3,7 +3,6 @@
 import { Suspense, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { motion, type Variants } from "framer-motion"
 import { useSearchParams } from "next/navigation"
 
 import { calculateVlsm } from "@/lib/vlsm"
@@ -17,27 +16,7 @@ import { CalculatorInputSection } from "@/components/app/calculator-input-sectio
 import { useAiDesignApplication } from "@/hooks/use-ai-design-application"
 import { useCalculatorPlanForm } from "@/hooks/use-calculator-plan-form"
 import { useCalculatorPageController } from "@/hooks/use-calculator-page-controller"
-
-const pageVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      duration: 0.2,
-      ease: "easeOut",
-      staggerChildren: 0.06,
-    },
-  },
-}
-
-const sectionVariants: Variants = {
-  hidden: { opacity: 0, y: 6 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.18, ease: "easeOut" },
-  },
-}
+import { PlannerWorkspace } from "@/components/app/planner-workspace"
 
 function CalculatorPageContent() {
   const searchParams = useSearchParams()
@@ -89,6 +68,8 @@ function CalculatorPageContent() {
   const {
     results,
     setResults,
+    diagnostics,
+    resultsAreStale,
     copied,
     onCopyResults,
     exporting,
@@ -146,16 +127,28 @@ function CalculatorPageContent() {
   })
 
   return (
-    <motion.div
-      className="flex-1 overflow-auto p-4 lg:p-6"
-      variants={pageVariants}
-      initial="hidden"
-      animate="visible"
-    >
-        <div className="mx-auto max-w-7xl space-y-6">
-          {/* Input Section */}
-          <motion.div variants={sectionVariants}>
-            <CalculatorInputSection
+    <div className="flex-1 overflow-auto">
+      <PlannerWorkspace
+        diagnostics={diagnostics}
+        resultsAreStale={resultsAreStale}
+        planName={planName}
+        onPlanNameChange={setPlanName}
+        hasMeaningfulEdits={
+          formValues.baseNetwork !== "192.168.1.0" ||
+          formValues.baseCidr !== "24" ||
+          JSON.stringify(formValues.subnets) !== JSON.stringify([
+            { id: 1, name: "LAN A", hosts: 50 },
+            { id: 2, name: "LAN B", hosts: 25 },
+            { id: 3, name: "LAN C", hosts: 10 },
+          ])
+        }
+        onApplyTemplate={(plan) => {
+          replacePlan(plan)
+          setPlanName(plan.suggestedTitle ?? "")
+          setResults([])
+        }}
+        editor={
+          <CalculatorInputSection
               baseNetwork={formValues.baseNetwork}
               baseCidr={formValues.baseCidr}
               onBaseNetworkChange={setBaseNetwork}
@@ -174,12 +167,11 @@ function CalculatorPageContent() {
               onRemoveSubnet={removeSubnet}
               onSubmit={calculateVLSM}
               onReset={resetForm}
+              canCalculate={diagnostics.isValid}
             />
-          </motion.div>
-
-          {/* Results Section */}
-          <motion.div variants={sectionVariants}>
-            <CalculatorResultsSection
+        }
+        resultsContent={
+          <CalculatorResultsSection
               results={results}
               activeView={activeView}
               onViewChange={handleViewChange}
@@ -197,9 +189,9 @@ function CalculatorPageContent() {
               totalRequired={totalRequired}
               totalUsable={totalUsable}
             />
-          </motion.div>
-        </div>
-    </motion.div>
+        }
+      />
+    </div>
   )
 }
 
