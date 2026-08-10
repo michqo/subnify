@@ -78,6 +78,54 @@ async function deleteCalculation(supabase: SupabaseClient, userId: string, calcu
   }
 }
 
+async function renameCalculation(
+  supabase: SupabaseClient,
+  userId: string,
+  input: { calculationId: string; title: string }
+) {
+  const title = input.title.trim()
+  if (!title || title.length > 80) {
+    throw new Error("Plan name must contain 1 to 80 characters.")
+  }
+
+  const { data, error } = await supabase
+    .from("calculations")
+    .update({ title })
+    .eq("id", input.calculationId)
+    .eq("user_id", userId)
+    .select("id")
+
+  if (error || !data || data.length === 0) {
+    throw new Error(error?.message ?? "Plan was not found or could not be renamed.")
+  }
+  return data[0].id as string
+}
+
+async function duplicateCalculation(supabase: SupabaseClient, userId: string, record: CalculationRecord) {
+  const fallbackTitle = `${record.base_network}/${record.base_cidr}`
+  const { data, error } = await supabase
+    .from("calculations")
+    .insert({
+      user_id: userId,
+      title: `${record.title ?? fallbackTitle} copy`,
+      source_type: record.source_type,
+      ai_prompt: record.ai_prompt,
+      ai_rationale: record.ai_rationale,
+      base_network: record.base_network,
+      base_cidr: record.base_cidr,
+      input_subnets: record.input_subnets,
+      result_subnets: record.result_subnets,
+      total_required_hosts: record.total_required_hosts,
+      total_usable_hosts: record.total_usable_hosts,
+    })
+    .select("id")
+
+  if (error || !data || data.length === 0) {
+    throw new Error(error?.message ?? "Plan could not be duplicated.")
+  }
+  return data[0].id as string
+}
+
 async function saveAiGeneratedCalculation(
   supabase: SupabaseClient,
   userId: string,
@@ -216,6 +264,34 @@ export function useDeleteCalculationMutation(userId: string | null) {
           queryKey: queryKeys.calculations.list(userId),
         })
       }
+    },
+  })
+}
+
+export function useRenameCalculationMutation(userId: string | null) {
+  const queryClient = useQueryClient()
+  const supabase = useMemo(() => createSupabaseBrowserClient(), [])
+  return useMutation({
+    mutationFn: (input: { calculationId: string; title: string }) => {
+      if (!userId) throw new Error("You must be signed in to rename calculations.")
+      return renameCalculation(supabase, userId, input)
+    },
+    onSuccess: async () => {
+      if (userId) await queryClient.invalidateQueries({ queryKey: queryKeys.calculations.list(userId) })
+    },
+  })
+}
+
+export function useDuplicateCalculationMutation(userId: string | null) {
+  const queryClient = useQueryClient()
+  const supabase = useMemo(() => createSupabaseBrowserClient(), [])
+  return useMutation({
+    mutationFn: (record: CalculationRecord) => {
+      if (!userId) throw new Error("You must be signed in to duplicate calculations.")
+      return duplicateCalculation(supabase, userId, record)
+    },
+    onSuccess: async () => {
+      if (userId) await queryClient.invalidateQueries({ queryKey: queryKeys.calculations.list(userId) })
     },
   })
 }
