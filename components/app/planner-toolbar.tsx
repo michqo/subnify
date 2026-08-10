@@ -23,15 +23,20 @@ export function PlannerToolbar({ planName, hasMeaningfulEdits, onApplyTemplate, 
   const router = useRouter()
   const pathname = usePathname()
   const [generatorOpen, setGeneratorOpen] = useState(() => searchParams.get("generate") === "1")
-  const { isAuthenticated, openAuthDialog } = useAuth()
+  const { isAuthenticated, isAuthLoading, openAuthDialog } = useAuth()
 
   useEffect(() => {
-    if (searchParams.get("generate") !== "1") return
+    if (searchParams.get("generate") !== "1" || isAuthLoading) return
+
+    if (!isAuthenticated) {
+      openAuthDialog("/app?generate=1")
+    }
+
     const next = new URLSearchParams(searchParams.toString())
     next.delete("generate")
     const query = next.toString()
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
-  }, [pathname, router, searchParams])
+  }, [isAuthenticated, isAuthLoading, openAuthDialog, pathname, router, searchParams])
 
   return (
     <>
@@ -65,7 +70,7 @@ export function PlannerToolbar({ planName, hasMeaningfulEdits, onApplyTemplate, 
         hasMeaningfulEdits={hasMeaningfulEdits}
         onApply={onApplyTemplate}
       />
-      {generatorOpen ? (
+      {generatorOpen && isAuthenticated ? (
         <GenerateRequirementsDialog open onOpenChange={setGeneratorOpen} onApply={onApplyRequirements} />
       ) : null}
     </>
