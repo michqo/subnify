@@ -81,10 +81,10 @@ function CalculatorPageContent() {
   const signInToSaveMessage = "Sign in to save calculations to cloud history."
 
   useEffect(() => {
-    if (planName.trim().length === 0 && typeof formValues.aiTitle === "string" && formValues.aiTitle.trim().length > 0) {
-      setPlanName(formValues.aiTitle.trim())
+    if (planName.trim().length === 0 && typeof formValues.suggestedTitle === "string" && formValues.suggestedTitle.trim().length > 0) {
+      setPlanName(formValues.suggestedTitle.trim())
     }
-  }, [formValues.aiTitle, planName, setPlanName])
+  }, [formValues.suggestedTitle, planName, setPlanName])
 
   const {
     results,

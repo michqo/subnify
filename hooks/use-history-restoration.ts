@@ -72,7 +72,7 @@ export function useHistoryRestoration({
         sourceType: data.source_type === "ai_design" ? "ai_design" : "history",
         aiPrompt: data.source_type === "ai_design" ? data.ai_prompt : null,
         aiRationale: data.source_type === "ai_design" ? data.ai_rationale : null,
-        aiTitle: typeof data.title === "string" ? data.title : null,
+        suggestedTitle: typeof data.title === "string" ? data.title : null,
       })
 
       const restoredResults = parseVlsmAllocations(data.result_subnets)

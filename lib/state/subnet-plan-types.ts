@@ -13,5 +13,5 @@ export type ReplacePlanInput = {
   sourceType?: PlanSource
   aiPrompt?: string | null
   aiRationale?: string | null
-  aiTitle?: string | null
+  suggestedTitle?: string | null
 }

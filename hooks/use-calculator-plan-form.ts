@@ -12,7 +12,7 @@ type CalculatorFormValues = {
   sourceType: "manual" | "ai_design" | "history"
   aiPrompt: string | null
   aiRationale: string | null
-  aiTitle: string | null
+  suggestedTitle: string | null
 }
 
 const defaultSubnets: SubnetInput[] = [
@@ -28,7 +28,7 @@ const defaultFormValues: CalculatorFormValues = {
   sourceType: "manual",
   aiPrompt: null,
   aiRationale: null,
-  aiTitle: null,
+  suggestedTitle: null,
 }
 
 export function useCalculatorPlanForm() {
@@ -136,7 +136,7 @@ export function useCalculatorPlanForm() {
       calculatorForm.setFieldValue("sourceType", plan.sourceType ?? "manual")
       calculatorForm.setFieldValue("aiPrompt", plan.aiPrompt ?? null)
       calculatorForm.setFieldValue("aiRationale", plan.aiRationale ?? null)
-      calculatorForm.setFieldValue("aiTitle", plan.aiTitle ?? null)
+      calculatorForm.setFieldValue("suggestedTitle", plan.suggestedTitle ?? null)
     },
     [calculatorForm]
   )

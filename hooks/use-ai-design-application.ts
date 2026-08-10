@@ -67,7 +67,7 @@ export function useAiDesignApplication({
           typeof parsedPlan.rationale === "string" && parsedPlan.rationale.trim().length > 0
             ? parsedPlan.rationale
             : null,
-        aiTitle: typeof parsedPlan.title === "string" ? parsedPlan.title : null,
+        suggestedTitle: typeof parsedPlan.title === "string" ? parsedPlan.title : null,
       })
 
       const calculated = calculateVlsm(nextBaseNetwork, designedSubnets)
