@@ -1,10 +1,7 @@
 import type { SubnetInput } from "@/lib/state/subnet-plan-types"
 import { calculateVlsm, type VlsmAllocation, type VlsmIssue } from "@/lib/vlsm"
 
-export type PlanDiagnostic = VlsmIssue & {
-  severity?: "error" | "warning" | "info"
-  subnetId?: number
-}
+export type PlanDiagnostic = VlsmIssue
 
 export type DiagnosePlanInput = {
   baseNetwork: string

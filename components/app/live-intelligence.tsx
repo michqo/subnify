@@ -43,7 +43,7 @@ export function LiveIntelligence({ diagnostics }: { diagnostics: PlanDiagnostics
       {diagnostics.issues.length > 0 ? (
         <div className="mt-4 space-y-2">
           {diagnostics.issues.map((issue, index) => (
-            <p key={`${issue.code}-${issue.subnetId ?? index}`} className={issue.severity === "error" ? "text-sm text-destructive" : "text-sm text-amber-700 dark:text-amber-300"}>
+            <p key={`${issue.code}-${issue.field}-${index}`} className="text-sm text-destructive">
               {issue.message}
             </p>
           ))}
