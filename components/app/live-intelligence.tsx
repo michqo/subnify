@@ -54,12 +54,19 @@ export function LiveIntelligence({ diagnostics }: { diagnostics: PlanDiagnostics
 
       {diagnostics.allocations.length > 0 ? (
         <div className="mt-4 border-t border-border pt-3">
-          <Button variant="ghost" size="sm" className="w-full justify-between px-0" onClick={() => setGuidance(!expanded)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="min-h-11 w-full justify-between px-0 md:min-h-9"
+            aria-expanded={expanded}
+            aria-controls="allocation-explanations"
+            onClick={() => setGuidance(!expanded)}
+          >
             {expanded ? "Hide explanations" : "Show explanations"}
             {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
           </Button>
           {expanded ? (
-            <div className="mt-2 space-y-3">
+            <div id="allocation-explanations" className="mt-2 space-y-3">
               {diagnostics.allocations.map((allocation) => (
                 <div key={`${allocation.name}-${allocation.startOffset}`} className="border-l-2 border-primary pl-3">
                   <p className="font-mono text-xs font-medium">{allocation.name} · /{allocation.cidr}</p>

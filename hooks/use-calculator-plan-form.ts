@@ -88,7 +88,7 @@ export function useCalculatorPlanForm() {
         subnet.id === id
           ? {
               ...subnet,
-              [field]: field === "hosts" ? parseInt(value, 10) || 0 : value,
+              [field]: field === "hosts" ? (value === "" ? 0 : Number(value)) : value,
             }
           : subnet
       )

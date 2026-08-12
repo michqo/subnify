@@ -1,4 +1,4 @@
-import { totalAddressesFromCidr, type VlsmAllocation } from "@/lib/vlsm"
+import type { VlsmAllocation } from "@/lib/vlsm"
 
 type ExportVlsmPdfArgs = {
   results: VlsmAllocation[]
@@ -68,7 +68,11 @@ export async function exportVlsmPdf({ results, baseNetwork, baseCidr, planName =
   document.setFontSize(12)
   document.text("Address Space Visualization", 40, chartStartY)
 
-  const totalAddresses = totalAddressesFromCidr(baseCidr)
+  const cidr = Number(baseCidr)
+  const totalAddresses =
+    Number.isInteger(cidr) && cidr >= 0 && cidr <= 30
+      ? 2 ** (32 - cidr)
+      : 0
   const allocatedAddresses = results.reduce((sum, row) => sum + row.blockSize, 0)
   const barX = 40
   const barY = chartStartY + 16

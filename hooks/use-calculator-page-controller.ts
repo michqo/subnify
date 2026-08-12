@@ -4,7 +4,13 @@ import { useCallback, useEffect, useMemo, useState, type SetStateAction } from "
 import { toast } from "sonner"
 
 import { exportVlsmPdf } from "@/lib/calculator/export-pdf"
-import { totalAddressesFromCidr, type VlsmAllocation } from "@/lib/vlsm"
+import type {
+  VlsmAllocation,
+  VlsmCalculationResult,
+  VlsmCalculationSuccess,
+  VlsmIssue,
+  VlsmPlanInput,
+} from "@/lib/vlsm"
 import { useCopyResults } from "@/hooks/use-copy-results"
 import type { SubnetInput } from "@/lib/state/subnet-plan-types"
 import { diagnosePlan } from "@/lib/planner/diagnostics"
@@ -19,7 +25,7 @@ type SaveCalculationInput = {
   successMessage?: string
 }
 
-type UseCalculatorPageControllerArgs = {
+export type UseCalculatorPageControllerArgs = {
   formValues: {
     baseNetwork: string
     baseCidr: string
@@ -38,11 +44,11 @@ type UseCalculatorPageControllerArgs = {
   updateSuccessMessage: string
   saveSuccessMessage: string
   saveCalculation: (
-    calculatedResults: VlsmAllocation[],
+    calculation: VlsmCalculationSuccess,
     snapshot: { baseNetwork: string; baseCidr: string; subnets: SubnetInput[] },
     options?: SaveCalculationInput
   ) => Promise<void>
-  calculateVlsm: (baseNetwork: string, subnets: SubnetInput[]) => VlsmAllocation[]
+  calculateVlsm: (input: VlsmPlanInput) => VlsmCalculationResult
   resetPlanForm: () => void
   setPlanName: (value: string) => void
   setShouldSaveToCloud: (value: boolean) => void
@@ -75,7 +81,8 @@ export function useCalculatorPageController({
   resolveViewFromQuery,
   replaceToCurrentView,
 }: UseCalculatorPageControllerArgs) {
-  const [results, setResults] = useState<VlsmAllocation[]>([])
+  const [calculation, setCalculation] = useState<VlsmCalculationSuccess | null>(null)
+  const [submittedIssues, setSubmittedIssues] = useState<VlsmIssue[]>([])
   const [committedPlanFingerprint, setCommittedPlanFingerprint] = useState<string | null>(null)
   const { copied, copyResults } = useCopyResults()
   const [exporting, setExporting] = useState(false)
@@ -93,16 +100,35 @@ export function useCalculatorPageController({
     [formValues.baseNetwork, formValues.baseCidr, formValues.subnets]
   )
 
+  const results = useMemo(() => calculation?.allocations ?? [], [calculation])
+
   const replaceResults = useCallback((nextResults: SetStateAction<VlsmAllocation[]>) => {
     setCommittedPlanFingerprint(null)
-    setResults(nextResults)
-  }, [])
+    setCalculation((currentCalculation) => {
+      const nextAllocations =
+        typeof nextResults === "function"
+          ? nextResults(currentCalculation?.allocations ?? [])
+          : nextResults
+      if (nextAllocations.length === 0) return null
+
+      const baseCidr =
+        formValues.baseCidr.trim() === ""
+          ? Number.NaN
+          : Number(formValues.baseCidr)
+      const recalculated = calculateVlsm({
+        baseNetwork: formValues.baseNetwork,
+        baseCidr,
+        subnets: formValues.subnets,
+      })
+      return recalculated.ok ? recalculated : null
+    })
+  }, [calculateVlsm, formValues.baseCidr, formValues.baseNetwork, formValues.subnets])
 
   useEffect(() => {
-    if (results.length > 0 && committedPlanFingerprint === null) {
+    if (calculation !== null && committedPlanFingerprint === null) {
       setCommittedPlanFingerprint(currentPlanFingerprint)
     }
-  }, [committedPlanFingerprint, currentPlanFingerprint, results.length])
+  }, [calculation, committedPlanFingerprint, currentPlanFingerprint])
 
   useEffect(() => {
     let emailConfirmedFromHash = false
@@ -126,12 +152,23 @@ export function useCalculatorPageController({
   }, [emailConfirmedFromQuery, buildAppUrl, resolveViewFromQuery, replaceToCurrentView])
 
   const calculateVLSM = useCallback(() => {
-    if (!diagnostics.isValid) {
-      toast.error("Fix the highlighted network inputs before calculating.")
+    const baseCidr =
+      formValues.baseCidr.trim() === ""
+        ? Number.NaN
+        : Number(formValues.baseCidr)
+    const result = calculateVlsm({
+      baseNetwork: formValues.baseNetwork,
+      baseCidr,
+      subnets: formValues.subnets,
+    })
+    if (!result.ok) {
+      setCalculation(null)
+      setCommittedPlanFingerprint(null)
+      setSubmittedIssues(result.issues)
       return
     }
-    const calculatedResults = calculateVlsm(formValues.baseNetwork, formValues.subnets)
-    setResults(calculatedResults)
+    setSubmittedIssues([])
+    setCalculation(result)
     setCommittedPlanFingerprint(currentPlanFingerprint)
 
     const shouldPersist = isCloudLinkedPlan || shouldSaveToCloud
@@ -145,7 +182,7 @@ export function useCalculatorPageController({
     }
 
     void saveCalculation(
-      calculatedResults,
+      result,
       {
         baseNetwork: formValues.baseNetwork,
         baseCidr: formValues.baseCidr,
@@ -164,7 +201,6 @@ export function useCalculatorPageController({
     activeCloudPlanId,
     calculateVlsm,
     currentPlanFingerprint,
-    diagnostics.isValid,
     formValues,
     isAiPlan,
     isAuthenticated,
@@ -198,32 +234,36 @@ export function useCalculatorPageController({
   }, [exporting, formValues.baseCidr, formValues.baseNetwork, planName, results])
 
   const onCopyResults = useCallback(() => {
+    if (calculation === null) return
     copyResults(results)
-  }, [copyResults, results])
+  }, [calculation, copyResults, results])
 
   const resetForm = useCallback(() => {
     resetPlanForm()
     setPlanName("")
     setShouldSaveToCloud(false)
     setActiveCloudPlanId(null)
-    setResults([])
+    setCalculation(null)
+    setSubmittedIssues([])
     setCommittedPlanFingerprint(null)
   }, [resetPlanForm, setActiveCloudPlanId, setPlanName, setShouldSaveToCloud])
 
   const totalUsable = results.reduce((acc, result) => acc + result.usableHosts, 0)
   const totalRequired = results.reduce((acc, result) => acc + result.requiredHosts, 0)
-  const totalAddresses = totalAddressesFromCidr(formValues.baseCidr)
-  const allocatedAddresses = results.reduce((acc, result) => acc + result.blockSize, 0)
+  const totalAddresses = calculation?.parent.totalAddresses ?? diagnostics.totalAddresses
+  const allocatedAddresses = calculation?.allocatedAddresses ?? 0
 
   const handleToggleSubnet = useCallback((subnetId: number) => {
     setSelectedSubnet((current) => (current === subnetId ? null : subnetId))
   }, [])
 
   return {
+    calculation,
+    submittedIssues,
     results,
     setResults: replaceResults,
     diagnostics,
-    resultsAreStale: results.length > 0 && committedPlanFingerprint !== null && committedPlanFingerprint !== currentPlanFingerprint,
+    resultsAreStale: calculation !== null && committedPlanFingerprint !== null && committedPlanFingerprint !== currentPlanFingerprint,
     copied,
     onCopyResults,
     exporting,

@@ -85,6 +85,10 @@ describe("PlannerWorkspace", () => {
     expect(screen.getByText(/62 hosts plus network/i)).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: /hide explanations/i }))
     expect(screen.queryByText(/62 hosts plus network/i)).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /show explanations/i })).toHaveAttribute(
+      "aria-expanded",
+      "false"
+    )
     expect(localStorage.getItem("subnify-guidance")).toBe("collapsed")
   })
 })

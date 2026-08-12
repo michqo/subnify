@@ -64,6 +64,7 @@ function CalculatorPageContent() {
   }, [formValues.suggestedTitle, planName, setPlanName])
 
   const {
+    submittedIssues,
     results,
     setResults,
     diagnostics,
@@ -91,7 +92,8 @@ function CalculatorPageContent() {
     activeCloudPlanId,
     updateSuccessMessage,
     saveSuccessMessage,
-    saveCalculation,
+    saveCalculation: (calculation, snapshot, options) =>
+      saveCalculation(calculation.allocations, snapshot, options),
     calculateVlsm,
     resetPlanForm,
     setPlanName,
@@ -162,7 +164,7 @@ function CalculatorPageContent() {
               onRemoveSubnet={removeSubnet}
               onSubmit={calculateVLSM}
               onReset={resetForm}
-              canCalculate={diagnostics.isValid}
+              submittedIssues={submittedIssues}
             />
         }
         resultsContent={

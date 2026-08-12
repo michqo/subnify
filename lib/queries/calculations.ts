@@ -146,7 +146,15 @@ async function saveAiGeneratedCalculation(
     name: subnet.name,
     hosts: subnet.hosts,
   }))
-  const calculatedResults = calculateVlsm(baseNetwork, vlsmInput)
+  const calculation = calculateVlsm({
+    baseNetwork,
+    baseCidr,
+    subnets: vlsmInput,
+  })
+  if (!calculation.ok) {
+    throw new Error(`Generated design validation failed: ${calculation.issues[0]?.code ?? "UNKNOWN"}`)
+  }
+  const calculatedResults = calculation.allocations
 
   const payload: CalculationInsert = {
     title: generatedPlan.title,

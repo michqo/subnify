@@ -6,8 +6,12 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { toast } from "sonner"
 
 import { parseSubnetInputArray, parseVlsmAllocations } from "@/lib/history"
-import type { ReplacePlanInput, SubnetInput } from "@/lib/state/subnet-plan-types"
-import type { VlsmAllocation } from "@/lib/vlsm"
+import type { ReplacePlanInput } from "@/lib/state/subnet-plan-types"
+import type {
+  VlsmAllocation,
+  VlsmCalculationResult,
+  VlsmPlanInput,
+} from "@/lib/vlsm"
 
 type UseHistoryRestorationArgs = {
   historyId: string | null
@@ -15,7 +19,7 @@ type UseHistoryRestorationArgs = {
   supabase: SupabaseClient
   replacePlan: (plan: ReplacePlanInput) => void
   replaceToCurrentView: () => void
-  calculateVlsmFallback: (baseNetwork: string, subnets: SubnetInput[]) => VlsmAllocation[]
+  calculateVlsmFallback: (input: VlsmPlanInput) => VlsmCalculationResult
   setResults: Dispatch<SetStateAction<VlsmAllocation[]>>
   setPlanName: Dispatch<SetStateAction<string>>
   setActiveCloudPlanId: Dispatch<SetStateAction<string | null>>
@@ -79,7 +83,15 @@ export function useHistoryRestoration({
       if (restoredResults.length > 0) {
         setResults(restoredResults)
       } else {
-        setResults(calculateVlsmFallback(restoredBaseNetwork, restoredSubnets))
+        const fallback = calculateVlsmFallback({
+          baseNetwork: restoredBaseNetwork,
+          baseCidr:
+            restoredBaseCidr.trim() === ""
+              ? Number.NaN
+              : Number(restoredBaseCidr),
+          subnets: restoredSubnets,
+        })
+        setResults(fallback.ok ? fallback.allocations : [])
       }
 
       setPlanName(typeof data.title === "string" ? data.title : "")
