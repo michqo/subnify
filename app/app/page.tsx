@@ -66,7 +66,7 @@ function CalculatorPageContent() {
   const {
     submittedIssues,
     results,
-    setResults,
+    setCalculation,
     diagnostics,
     resultsAreStale,
     copied,
@@ -112,7 +112,7 @@ function CalculatorPageContent() {
     replacePlan,
     replaceToCurrentView,
     calculateVlsmFallback: calculateVlsm,
-    setResults,
+    setCalculation,
     setPlanName,
     setActiveCloudPlanId,
   })
@@ -136,13 +136,13 @@ function CalculatorPageContent() {
         onApplyTemplate={(plan) => {
           replacePlan(plan)
           setPlanName(plan.suggestedTitle ?? "")
-          setResults([])
+          setCalculation(null)
         }}
         onApplyRequirements={(plan) => {
           replacePlan(plan)
           setPlanName(plan.suggestedTitle ?? "")
           setActiveCloudPlanId(null)
-          setResults([])
+          setCalculation(null)
         }}
         editor={
           <CalculatorInputSection

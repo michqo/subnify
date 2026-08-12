@@ -5,11 +5,11 @@ import type { Dispatch, SetStateAction } from "react"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { toast } from "sonner"
 
-import { parseSubnetInputArray, parseVlsmAllocations } from "@/lib/history"
+import { parseSubnetInputArray } from "@/lib/history"
 import type { ReplacePlanInput } from "@/lib/state/subnet-plan-types"
 import type {
-  VlsmAllocation,
   VlsmCalculationResult,
+  VlsmCalculationSuccess,
   VlsmPlanInput,
 } from "@/lib/vlsm"
 
@@ -20,7 +20,7 @@ type UseHistoryRestorationArgs = {
   replacePlan: (plan: ReplacePlanInput) => void
   replaceToCurrentView: () => void
   calculateVlsmFallback: (input: VlsmPlanInput) => VlsmCalculationResult
-  setResults: Dispatch<SetStateAction<VlsmAllocation[]>>
+  setCalculation: (calculation: VlsmCalculationSuccess | null) => void
   setPlanName: Dispatch<SetStateAction<string>>
   setActiveCloudPlanId: Dispatch<SetStateAction<string | null>>
 }
@@ -32,7 +32,7 @@ export function useHistoryRestoration({
   replacePlan,
   replaceToCurrentView,
   calculateVlsmFallback,
-  setResults,
+  setCalculation,
   setPlanName,
   setActiveCloudPlanId,
 }: UseHistoryRestorationArgs) {
@@ -79,20 +79,15 @@ export function useHistoryRestoration({
         suggestedTitle: typeof data.title === "string" ? data.title : null,
       })
 
-      const restoredResults = parseVlsmAllocations(data.result_subnets)
-      if (restoredResults.length > 0) {
-        setResults(restoredResults)
-      } else {
-        const fallback = calculateVlsmFallback({
-          baseNetwork: restoredBaseNetwork,
-          baseCidr:
-            restoredBaseCidr.trim() === ""
-              ? Number.NaN
-              : Number(restoredBaseCidr),
-          subnets: restoredSubnets,
-        })
-        setResults(fallback.ok ? fallback.allocations : [])
-      }
+      const restoredCalculation = calculateVlsmFallback({
+        baseNetwork: restoredBaseNetwork,
+        baseCidr:
+          restoredBaseCidr.trim() === ""
+            ? Number.NaN
+            : Number(restoredBaseCidr),
+        subnets: restoredSubnets,
+      })
+      setCalculation(restoredCalculation.ok ? restoredCalculation : null)
 
       setPlanName(typeof data.title === "string" ? data.title : "")
       setActiveCloudPlanId(data.id)
@@ -111,9 +106,9 @@ export function useHistoryRestoration({
     isAuthenticated,
     replacePlan,
     replaceToCurrentView,
+    setCalculation,
     setActiveCloudPlanId,
     setPlanName,
-    setResults,
     supabase,
   ])
 }

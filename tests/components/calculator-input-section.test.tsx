@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
@@ -32,6 +33,30 @@ function buildProps(
     submittedIssues: [],
     ...overrides,
   }
+}
+
+function StatefulSubnetName({
+  onUpdateSubnet,
+}: {
+  onUpdateSubnet: CalculatorInputSectionProps["onUpdateSubnet"]
+}) {
+  const [subnets, setSubnets] = useState([{ id: 1, name: "", hosts: 50 }])
+
+  return (
+    <CalculatorInputSection
+      {...buildProps({
+        subnets,
+        onUpdateSubnet: (id, field, value) => {
+          onUpdateSubnet(id, field, value)
+          setSubnets((current) =>
+            current.map((subnet) =>
+              subnet.id === id ? { ...subnet, [field]: value } : subnet
+            )
+          )
+        },
+      })}
+    />
+  )
 }
 
 describe("CalculatorInputSection", () => {
@@ -114,10 +139,6 @@ describe("CalculatorInputSection", () => {
 
     expect(screen.getByRole("button", { name: /calculate vlsm/i })).toBeEnabled()
     expect(screen.getByRole("button", { name: /add subnet/i })).toBeDisabled()
-    expect(screen.getByLabelText("Subnet 1 name")).toHaveAttribute(
-      "maxlength",
-      "80"
-    )
     expect(screen.getByLabelText("Subnet 1 required hosts")).toHaveAttribute(
       "min",
       "1"
@@ -127,5 +148,52 @@ describe("CalculatorInputSection", () => {
       "4294967294"
     )
     expect(screen.getByRole("button", { name: "Remove LAN 1" })).toBeEnabled()
+  })
+
+  it("gives plan controls 44px mobile targets", () => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      }
+    )
+    render(
+      <CalculatorInputSection
+        {...buildProps({ isAuthenticated: true, shouldSaveToCloud: true })}
+      />
+    )
+
+    expect(screen.getByLabelText("Plan name")).toHaveClass(
+      "min-h-11",
+      "md:min-h-9"
+    )
+    expect(
+      screen.getByRole("checkbox", {
+        name: /save this manual calculation to cloud history/i,
+      })
+    ).toHaveClass("after:-inset-3.5")
+    expect(
+      screen.getByText(/save this manual calculation to cloud history/i)
+    ).toHaveClass("min-h-11")
+  })
+
+  it("accepts 80 astral characters and blocks the 81st subnet-name character", async () => {
+    const user = userEvent.setup()
+    const onUpdateSubnet = vi.fn()
+    render(<StatefulSubnetName onUpdateSubnet={onUpdateSubnet} />)
+    const input = screen.getByLabelText("Subnet 1 name")
+    const eightyCharacters = "😀".repeat(80)
+
+    await user.type(input, eightyCharacters)
+
+    expect(input).toHaveValue(eightyCharacters)
+    expect(Array.from((input as HTMLInputElement).value)).toHaveLength(80)
+
+    await user.type(input, "😀")
+
+    expect(input).toHaveValue(eightyCharacters)
+    expect(onUpdateSubnet).toHaveBeenLastCalledWith(1, "name", eightyCharacters)
   })
 })

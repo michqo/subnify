@@ -46,9 +46,13 @@ function SubnetRow({
           aria-label={`Subnet ${index + 1} name`}
           aria-invalid={nameIssues.length > 0 ? true : undefined}
           aria-describedby={nameIssues.length > 0 ? nameErrorId : undefined}
-          onChange={(event) => onUpdateSubnet(subnet.id, "name", event.target.value)}
+          onChange={(event) => {
+            const value = event.target.value
+            if (Array.from(value).length <= 80) {
+              onUpdateSubnet(subnet.id, "name", value)
+            }
+          }}
           placeholder="Subnet name"
-          maxLength={80}
           className="min-h-11 border-border bg-card md:min-h-9"
         />
         {nameIssues.length > 0 ? (
@@ -251,6 +255,7 @@ export function CalculatorInputSection({
                       maxLength={80}
                       onChange={(event) => onPlanNameChange(event.target.value)}
                       placeholder="Branch office rollout"
+                      className="min-h-11 md:min-h-9"
                       />
                     </Field>
                   </motion.div>
@@ -264,8 +269,9 @@ export function CalculatorInputSection({
                   id="saveToCloud"
                   checked={shouldSaveToCloud}
                   onCheckedChange={onShouldSaveToCloudChange}
+                  className="after:-inset-3.5 md:after:-inset-x-3 md:after:-inset-y-2"
                 />
-                <FieldLabel htmlFor="saveToCloud">
+                <FieldLabel htmlFor="saveToCloud" className="min-h-11 cursor-pointer items-center md:min-h-9">
                   Save this manual calculation to cloud history
                 </FieldLabel>
               </Field>

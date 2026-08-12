@@ -1,11 +1,10 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState, type SetStateAction } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 
 import { exportVlsmPdf } from "@/lib/calculator/export-pdf"
 import type {
-  VlsmAllocation,
   VlsmCalculationResult,
   VlsmCalculationSuccess,
   VlsmIssue,
@@ -102,27 +101,11 @@ export function useCalculatorPageController({
 
   const results = useMemo(() => calculation?.allocations ?? [], [calculation])
 
-  const replaceResults = useCallback((nextResults: SetStateAction<VlsmAllocation[]>) => {
+  const replaceCalculation = useCallback((nextCalculation: VlsmCalculationSuccess | null) => {
     setCommittedPlanFingerprint(null)
-    setCalculation((currentCalculation) => {
-      const nextAllocations =
-        typeof nextResults === "function"
-          ? nextResults(currentCalculation?.allocations ?? [])
-          : nextResults
-      if (nextAllocations.length === 0) return null
-
-      const baseCidr =
-        formValues.baseCidr.trim() === ""
-          ? Number.NaN
-          : Number(formValues.baseCidr)
-      const recalculated = calculateVlsm({
-        baseNetwork: formValues.baseNetwork,
-        baseCidr,
-        subnets: formValues.subnets,
-      })
-      return recalculated.ok ? recalculated : null
-    })
-  }, [calculateVlsm, formValues.baseCidr, formValues.baseNetwork, formValues.subnets])
+    setSubmittedIssues([])
+    setCalculation(nextCalculation)
+  }, [])
 
   useEffect(() => {
     if (calculation !== null && committedPlanFingerprint === null) {
@@ -259,9 +242,9 @@ export function useCalculatorPageController({
 
   return {
     calculation,
+    setCalculation: replaceCalculation,
     submittedIssues,
     results,
-    setResults: replaceResults,
     diagnostics,
     resultsAreStale: calculation !== null && committedPlanFingerprint !== null && committedPlanFingerprint !== currentPlanFingerprint,
     copied,
