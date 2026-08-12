@@ -45,7 +45,7 @@ describe("PlannerWorkspace", () => {
     )
 
     expect(screen.getByText("Editor remains visible")).toBeInTheDocument()
-    expect(screen.getByText("Enter a valid IPv4 address.")).toBeInTheDocument()
+    expect(screen.getByText("Enter an IPv4 address using four decimal octets from 0 to 255.")).toBeInTheDocument()
     expect(screen.getByText("0% used")).toBeInTheDocument()
   })
 

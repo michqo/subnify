@@ -2,16 +2,24 @@ import { ArrowRight } from "lucide-react"
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
-import { diagnosePlan, explainAllocation } from "@/lib/planner/diagnostics"
+import { explainAllocation } from "@/lib/planner/diagnostics"
+import { calculateVlsm } from "@/lib/vlsm"
 
-const preview = diagnosePlan({
-  baseNetwork: "192.168.10.0",
-  baseCidr: "24",
-  subnets: [
-    { id: 1, name: "Engineering", hosts: 62 },
-    { id: 2, name: "Guest Wi-Fi", hosts: 40 },
-  ],
-})
+function calculatePreview() {
+  const result = calculateVlsm({
+    baseNetwork: "192.168.10.0",
+    baseCidr: 24,
+    subnets: [
+      { id: 1, name: "Engineering", hosts: 62 },
+      { id: 2, name: "Guest Wi-Fi", hosts: 40 },
+    ],
+  })
+
+  if (!result.ok) throw new Error("Landing preview VLSM calculation failed.")
+  return result
+}
+
+const preview = calculatePreview()
 
 export function HeroSection() {
   return (
@@ -40,7 +48,7 @@ export function HeroSection() {
           <div className="border-l-2 border-primary bg-accent/50 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
             {explainAllocation(preview.allocations[0])}
           </div>
-          <div className="grid grid-cols-3 gap-3 border-t border-border pt-4 font-mono text-xs"><div><span className="block text-lg font-semibold text-foreground">2</span>subnets</div><div><span className="block text-lg font-semibold text-foreground">50%</span>allocated</div><div><span className="block text-lg font-semibold text-foreground">128</span>free</div></div>
+          <div className="grid grid-cols-3 gap-3 border-t border-border pt-4 font-mono text-xs"><div><span className="block text-lg font-semibold text-foreground">{preview.allocations.length}</span>subnets</div><div><span className="block text-lg font-semibold text-foreground">{preview.allocatedAddresses}</span>allocated</div><div><span className="block text-lg font-semibold text-foreground">{preview.remainingAddresses}</span>free</div></div>
         </div>
       </div>
     </section>
