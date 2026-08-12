@@ -99,8 +99,6 @@ export function useCalculatorPageController({
     [formValues.baseNetwork, formValues.baseCidr, formValues.subnets]
   )
 
-  const results = useMemo(() => calculation?.allocations ?? [], [calculation])
-
   const replaceCalculation = useCallback((nextCalculation: VlsmCalculationSuccess | null) => {
     setCommittedPlanFingerprint(null)
     setSubmittedIssues([])
@@ -112,6 +110,11 @@ export function useCalculatorPageController({
       setCommittedPlanFingerprint(currentPlanFingerprint)
     }
   }, [calculation, committedPlanFingerprint, currentPlanFingerprint])
+
+  const resultsAreStale =
+    calculation !== null &&
+    committedPlanFingerprint !== null &&
+    committedPlanFingerprint !== currentPlanFingerprint
 
   useEffect(() => {
     let emailConfirmedFromHash = false
@@ -197,16 +200,14 @@ export function useCalculatorPageController({
   ])
 
   const exportPdf = useCallback(async () => {
-    if (results.length === 0 || exporting) {
+    if (calculation === null || resultsAreStale || exporting) {
       return
     }
 
     setExporting(true)
     try {
       await exportVlsmPdf({
-        results,
-        baseNetwork: formValues.baseNetwork,
-        baseCidr: formValues.baseCidr,
+        calculation,
         planName,
       })
     } catch {
@@ -214,12 +215,12 @@ export function useCalculatorPageController({
     } finally {
       setExporting(false)
     }
-  }, [exporting, formValues.baseCidr, formValues.baseNetwork, planName, results])
+  }, [calculation, exporting, planName, resultsAreStale])
 
   const onCopyResults = useCallback(() => {
-    if (calculation === null) return
-    copyResults(results)
-  }, [calculation, copyResults, results])
+    if (calculation === null || resultsAreStale) return
+    void copyResults(calculation)
+  }, [calculation, copyResults, resultsAreStale])
 
   const resetForm = useCallback(() => {
     resetPlanForm()
@@ -231,11 +232,6 @@ export function useCalculatorPageController({
     setCommittedPlanFingerprint(null)
   }, [resetPlanForm, setActiveCloudPlanId, setPlanName, setShouldSaveToCloud])
 
-  const totalUsable = results.reduce((acc, result) => acc + result.usableHosts, 0)
-  const totalRequired = results.reduce((acc, result) => acc + result.requiredHosts, 0)
-  const totalAddresses = calculation?.parent.totalAddresses ?? diagnostics.totalAddresses
-  const allocatedAddresses = calculation?.allocatedAddresses ?? 0
-
   const handleToggleSubnet = useCallback((subnetId: number) => {
     setSelectedSubnet((current) => (current === subnetId ? null : subnetId))
   }, [])
@@ -244,19 +240,14 @@ export function useCalculatorPageController({
     calculation,
     setCalculation: replaceCalculation,
     submittedIssues,
-    results,
     diagnostics,
-    resultsAreStale: calculation !== null && committedPlanFingerprint !== null && committedPlanFingerprint !== currentPlanFingerprint,
+    resultsAreStale,
     copied,
     onCopyResults,
     exporting,
     exportPdf,
     selectedSubnet,
     handleToggleSubnet,
-    totalUsable,
-    totalRequired,
-    totalAddresses,
-    allocatedAddresses,
     calculateVLSM,
     resetForm,
   }

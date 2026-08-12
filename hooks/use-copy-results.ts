@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 
-import type { VlsmAllocation } from "@/lib/vlsm"
+import type { VlsmCalculationSuccess } from "@/lib/vlsm"
 
 export function useCopyResults() {
   const [copied, setCopied] = useState(false)
@@ -16,15 +16,15 @@ export function useCopyResults() {
     }
   }, [])
 
-  const copyResults = useCallback((results: VlsmAllocation[]) => {
-    const text = results
+  const copyResults = useCallback((calculation: VlsmCalculationSuccess) => {
+    const text = calculation.allocations
       .map(
         (result) =>
           `${result.name}: ${result.networkAddress}/${result.cidr} (Mask: ${result.subnetMask}, Range: ${result.firstHost} - ${result.lastHost})`
       )
       .join("\n")
 
-    void navigator.clipboard.writeText(text)
+    const write = navigator.clipboard.writeText(text)
 
     setCopied(true)
 
@@ -36,6 +36,8 @@ export function useCopyResults() {
       setCopied(false)
       timeoutRef.current = null
     }, 2000)
+
+    return write
   }, [])
 
   return {

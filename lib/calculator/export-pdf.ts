@@ -1,14 +1,15 @@
-import type { VlsmAllocation } from "@/lib/vlsm"
+import type { VlsmCalculationSuccess } from "@/lib/vlsm"
 
-type ExportVlsmPdfArgs = {
-  results: VlsmAllocation[]
-  baseNetwork: string
-  baseCidr: string
+export type ExportVlsmPdfArgs = {
+  calculation: VlsmCalculationSuccess
   planName?: string | null
   createdAt?: Date
 }
 
-export function buildPdfFilename(planName: string | null, createdAt: Date): string {
+export function buildPdfFilename(
+  planName: string | null,
+  createdAt: Date
+): string {
   const slug = (planName ?? "")
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -19,8 +20,16 @@ export function buildPdfFilename(planName: string | null, createdAt: Date): stri
   return `subnify-${slug || "plan"}-${date}.pdf`
 }
 
-export async function exportVlsmPdf({ results, baseNetwork, baseCidr, planName = null, createdAt = new Date() }: ExportVlsmPdfArgs) {
-  const [{ jsPDF }, { default: autoTable }] = await Promise.all([import("jspdf"), import("jspdf-autotable")])
+export async function exportVlsmPdf({
+  calculation,
+  planName = null,
+  createdAt = new Date(),
+}: ExportVlsmPdfArgs) {
+  const [{ jsPDF }, { default: autoTable }] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ])
+  const results = calculation.allocations
 
   const document = new jsPDF({ unit: "pt", format: "a4" })
   const createdLabel = createdAt.toLocaleString()
@@ -35,11 +44,25 @@ export async function exportVlsmPdf({ results, baseNetwork, baseCidr, planName =
   document.text(planName?.trim() || "IPv4 address plan", 40, 60)
   document.setFontSize(10)
   document.text(`Generated: ${createdLabel}`, 40, 78)
-  document.text(`Base network: ${baseNetwork}/${baseCidr}`, 40, 92)
+  document.text(
+    `Base network: ${calculation.parent.networkAddress}/${calculation.parent.cidr}`,
+    40,
+    92
+  )
 
   autoTable(document, {
     startY: 112,
-    head: [["Subnet", "Network", "CIDR", "Mask", "Host Range", "Broadcast", "Usable"]],
+    head: [
+      [
+        "Subnet",
+        "Network",
+        "CIDR",
+        "Mask",
+        "Host Range",
+        "Broadcast",
+        "Usable",
+      ],
+    ],
     body: results.map((row) => [
       row.name,
       row.networkAddress,
@@ -53,7 +76,9 @@ export async function exportVlsmPdf({ results, baseNetwork, baseCidr, planName =
     headStyles: { fillColor: [37, 99, 235] },
   })
 
-  const tableEnd = (document as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 96
+  const tableEnd =
+    (document as { lastAutoTable?: { finalY: number } }).lastAutoTable
+      ?.finalY ?? 96
   const pageHeight = document.internal.pageSize.getHeight()
   if (tableEnd + 150 > pageHeight) {
     document.addPage()
@@ -68,12 +93,8 @@ export async function exportVlsmPdf({ results, baseNetwork, baseCidr, planName =
   document.setFontSize(12)
   document.text("Address Space Visualization", 40, chartStartY)
 
-  const cidr = Number(baseCidr)
-  const totalAddresses =
-    Number.isInteger(cidr) && cidr >= 0 && cidr <= 30
-      ? 2 ** (32 - cidr)
-      : 0
-  const allocatedAddresses = results.reduce((sum, row) => sum + row.blockSize, 0)
+  const totalAddresses = calculation.parent.totalAddresses
+  const allocatedAddresses = calculation.allocatedAddresses
   const barX = 40
   const barY = chartStartY + 16
   const barWidth = 515
@@ -110,9 +131,9 @@ export async function exportVlsmPdf({ results, baseNetwork, baseCidr, planName =
     }
   })
 
-  if (allocatedAddresses < totalAddresses) {
+  if (calculation.remainingAddresses > 0) {
     const left = barX + (allocatedAddresses / totalAddresses) * barWidth
-    const width = ((totalAddresses - allocatedAddresses) / totalAddresses) * barWidth
+    const width = (calculation.remainingAddresses / totalAddresses) * barWidth
     document.setFillColor(226, 232, 240)
     document.rect(left, barY, width, barHeight, "F")
   }

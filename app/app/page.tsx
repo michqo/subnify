@@ -64,8 +64,8 @@ function CalculatorPageContent() {
   }, [formValues.suggestedTitle, planName, setPlanName])
 
   const {
+    calculation,
     submittedIssues,
-    results,
     setCalculation,
     diagnostics,
     resultsAreStale,
@@ -75,10 +75,6 @@ function CalculatorPageContent() {
     exportPdf,
     selectedSubnet,
     handleToggleSubnet,
-    totalUsable,
-    totalRequired,
-    totalAddresses,
-    allocatedAddresses,
     calculateVLSM,
     resetForm,
   } = useCalculatorPageController({
@@ -169,7 +165,8 @@ function CalculatorPageContent() {
         }
         resultsContent={
           <CalculatorResultsSection
-              results={results}
+              calculation={calculation}
+              resultsAreStale={resultsAreStale}
               activeView={activeView}
               onViewChange={handleViewChange}
               copied={copied}
@@ -178,13 +175,6 @@ function CalculatorPageContent() {
               onExportPdf={exportPdf}
               selectedSubnet={selectedSubnet}
               onToggleSubnet={handleToggleSubnet}
-              subnets={formValues.subnets}
-              baseNetwork={formValues.baseNetwork}
-              baseCidr={formValues.baseCidr}
-              totalAddresses={totalAddresses}
-              allocatedAddresses={allocatedAddresses}
-              totalRequired={totalRequired}
-              totalUsable={totalUsable}
             />
         }
       />
