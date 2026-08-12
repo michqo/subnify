@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { GenerateRequirementsDialog } from "@/components/app/generate-requirements-dialog"
 
@@ -17,6 +17,18 @@ vi.mock("@/lib/queries/ai-designer", () => ({
 }))
 
 describe("GenerateRequirementsDialog", () => {
+  beforeEach(() => {
+    generate.mockReset()
+  })
+
+  it("shows and enforces the 4000 character prompt limit", () => {
+    render(<GenerateRequirementsDialog open onOpenChange={vi.fn()} onApply={vi.fn()} />)
+
+    const prompt = screen.getByLabelText("Environment requirements")
+    expect(prompt).toHaveAttribute("maxLength", "4000")
+    expect(screen.getByText("0 / 4000 characters")).toBeInTheDocument()
+  })
+
   it("previews and explicitly applies normalized requirements", async () => {
     const user = userEvent.setup()
     const onApply = vi.fn()
@@ -60,5 +72,32 @@ describe("GenerateRequirementsDialog", () => {
 
     expect(await screen.findByText("Provider timed out")).toBeInTheDocument()
     expect(prompt).toHaveValue("branch with voice and guest")
+    expect(screen.getByRole("button", { name: "Generate requirements" })).toBeEnabled()
+  })
+
+  it("offers generation again after a retryable failure", async () => {
+    const user = userEvent.setup()
+    generate
+      .mockRejectedValueOnce(new Error("Generation failed. Reference: request-1"))
+      .mockResolvedValueOnce({
+        plan: {
+          title: "Branch office",
+          rationale: "Separate voice and guest traffic.",
+          baseNetwork: "10.20.0.0",
+          baseCidr: 24,
+          subnets: [{ name: "Voice", hosts: 30 }],
+        },
+      })
+
+    render(<GenerateRequirementsDialog open onOpenChange={vi.fn()} onApply={vi.fn()} />)
+    await user.type(screen.getByLabelText("Environment requirements"), "branch office")
+    await user.click(screen.getByRole("button", { name: "Generate requirements" }))
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Reference: request-1")
+    await user.click(screen.getByRole("button", { name: "Generate requirements" }))
+
+    expect(await screen.findByText("Separate voice and guest traffic.")).toBeInTheDocument()
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+    expect(screen.getByLabelText("Environment requirements")).toHaveValue("branch office")
   })
 })

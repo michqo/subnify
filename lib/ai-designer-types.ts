@@ -1,3 +1,5 @@
+export const MAX_AI_PROMPT_LENGTH = 4000
+
 export type DesignerSubnet = {
   name: string
   hosts: number
@@ -17,6 +19,13 @@ export type QuotaSnapshot = {
   used: number
   remaining: number
   windowHours: number
+}
+
+export type AiDesignerErrorResponse = {
+  error: string
+  retryable: boolean
+  correlationId: string
+  quota?: QuotaSnapshot
 }
 
 export function formatWaitTime(seconds: number): string {

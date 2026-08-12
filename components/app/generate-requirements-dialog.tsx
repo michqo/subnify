@@ -14,7 +14,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
-import type { DesignerPlan } from "@/lib/ai-designer-types"
+import {
+  MAX_AI_PROMPT_LENGTH,
+  type DesignerPlan,
+} from "@/lib/ai-designer-types"
 import { getAiPlanBase, normalizeAiDesignedSubnets } from "@/lib/planner"
 import { AiDesignerApiError, useAiDesignerQuotaQuery, useGenerateAiDesignMutation } from "@/lib/queries/ai-designer"
 import type { ReplacePlanInput } from "@/lib/state/subnet-plan-types"
@@ -38,6 +41,13 @@ export function GenerateRequirementsDialog({ open, onOpenChange, onApply }: Gene
     const normalizedPrompt = prompt.trim()
     if (!normalizedPrompt) {
       setError("Describe the environment before generating requirements.")
+      return
+    }
+
+    if (normalizedPrompt.length > MAX_AI_PROMPT_LENGTH) {
+      setError(
+        `Keep the environment description to ${MAX_AI_PROMPT_LENGTH} characters or fewer.`
+      )
       return
     }
 
@@ -91,11 +101,17 @@ export function GenerateRequirementsDialog({ open, onOpenChange, onApply }: Gene
               id="requirements-prompt"
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
+              maxLength={MAX_AI_PROMPT_LENGTH}
               rows={5}
               placeholder="Three-floor office: 120 staff, guest Wi-Fi, VoIP, CCTV, isolated servers…"
               className="w-full rounded-sm border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
-            <FieldDescription>Include device counts, branches, security zones, and expected growth.</FieldDescription>
+            <FieldDescription className="flex justify-between gap-4">
+              <span>Include device counts, branches, security zones, and expected growth.</span>
+              <span className="shrink-0 font-mono">
+                {prompt.length} / {MAX_AI_PROMPT_LENGTH} characters
+              </span>
+            </FieldDescription>
           </Field>
 
           <Button onClick={() => void generate()} disabled={generation.isPending || exhausted}>

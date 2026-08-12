@@ -3,7 +3,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { queryKeys } from "@/lib/query-keys"
-import type { DesignerPlan, QuotaSnapshot } from "@/lib/ai-designer-types"
+import type {
+  AiDesignerErrorResponse,
+  DesignerPlan,
+  QuotaSnapshot,
+} from "@/lib/ai-designer-types"
 
 type GenerateAiDesignResponse = {
   plan: DesignerPlan
@@ -21,27 +25,45 @@ type QuotaResponse = {
   quota: QuotaSnapshot
 }
 
-type ApiErrorResponse = {
-  error?: string
-  quota?: QuotaSnapshot
-}
-
 export class AiDesignerApiError extends Error {
   quota?: QuotaSnapshot
+  retryable: boolean
+  correlationId?: string
 
-  constructor(message: string, quota?: QuotaSnapshot) {
+  constructor(
+    message: string,
+    quota?: QuotaSnapshot,
+    retryable = false,
+    correlationId?: string
+  ) {
     super(message)
     this.name = "AiDesignerApiError"
     this.quota = quota
+    this.retryable = retryable
+    this.correlationId = correlationId
   }
+}
+
+function apiErrorMessage(error: string, correlationId?: string) {
+  return correlationId ? `${error} Reference: ${correlationId}` : error
 }
 
 async function fetchQuota(): Promise<QuotaSnapshot> {
   const response = await fetch("/api/ai-designer", { method: "GET" })
-  const payload = (await response.json().catch(() => ({}))) as Partial<QuotaResponse & ApiErrorResponse>
+  const payload = (await response.json().catch(() => ({}))) as Partial<
+    QuotaResponse & AiDesignerErrorResponse
+  >
 
   if (!response.ok || !payload.quota) {
-    throw new AiDesignerApiError(payload.error ?? "Failed to load quota.", payload.quota)
+    throw new AiDesignerApiError(
+      apiErrorMessage(
+        payload.error ?? "Failed to load quota.",
+        payload.correlationId
+      ),
+      payload.quota,
+      payload.retryable,
+      payload.correlationId
+    )
   }
 
   return payload.quota
@@ -54,10 +76,20 @@ async function generateDesign({ prompt }: SaveAiDesignArgs): Promise<GenerateAiD
     body: JSON.stringify({ prompt }),
   })
 
-  const payload = (await response.json().catch(() => ({}))) as Partial<GenerateAiDesignResponse & ApiErrorResponse>
+  const payload = (await response.json().catch(() => ({}))) as Partial<
+    GenerateAiDesignResponse & AiDesignerErrorResponse
+  >
 
   if (!response.ok || !payload.plan) {
-    throw new AiDesignerApiError(payload.error ?? "Failed to generate a design.", payload.quota)
+    throw new AiDesignerApiError(
+      apiErrorMessage(
+        payload.error ?? "Failed to generate a design.",
+        payload.correlationId
+      ),
+      payload.quota,
+      payload.retryable,
+      payload.correlationId
+    )
   }
 
   return {
