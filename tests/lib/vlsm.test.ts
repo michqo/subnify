@@ -139,6 +139,46 @@ describe("calculateVlsm", () => {
     }
   )
 
+  it("rejects a null subnet row without throwing", () => {
+    const result = calculateVlsm({
+      ...defaults,
+      subnets: [null] as unknown as VlsmPlanInput["subnets"],
+    })
+    expect(result).toEqual({
+      ok: false,
+      issues: [
+        expect.objectContaining({
+          code: "INVALID_SUBNET_NAME",
+          field: "subnets.0.name",
+        }),
+        expect.objectContaining({
+          code: "INVALID_HOST_COUNT",
+          field: "subnets.0.hosts",
+        }),
+      ],
+    })
+  })
+
+  it("rejects a sparse subnet row without throwing", () => {
+    const result = calculateVlsm({
+      ...defaults,
+      subnets: Array(1) as VlsmPlanInput["subnets"],
+    })
+    expect(result).toEqual({
+      ok: false,
+      issues: [
+        expect.objectContaining({
+          code: "INVALID_SUBNET_NAME",
+          field: "subnets.0.name",
+        }),
+        expect.objectContaining({
+          code: "INVALID_HOST_COUNT",
+          field: "subnets.0.hosts",
+        }),
+      ],
+    })
+  })
+
   it("rejects blank, overlong, and case-insensitive duplicate names", () => {
     const result = calculateVlsm({
       ...defaults,

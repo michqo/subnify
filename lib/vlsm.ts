@@ -149,6 +149,22 @@ export function calculateVlsm(input: VlsmPlanInput): VlsmCalculationResult {
     ? candidate.subnets
     : []
   ).entries()) {
+    if (row === null || typeof row !== "object") {
+      issues.push(
+        {
+          code: "INVALID_SUBNET_NAME",
+          message: "Subnet name must contain 1 to 80 characters.",
+          field: `subnets.${index}.name`,
+        },
+        {
+          code: "INVALID_HOST_COUNT",
+          message:
+            "Required hosts must be a whole number from 1 to 4,294,967,294.",
+          field: `subnets.${index}.hosts`,
+        }
+      )
+      continue
+    }
     const name = typeof row.name === "string" ? row.name.trim() : ""
     const nameKey = name.toLowerCase()
     if (!name || [...name].length > 80) {
