@@ -118,4 +118,52 @@ describe("useCalculatorPageController", () => {
       expect.any(Object)
     )
   })
+
+  it("exposes restored legacy issues while clearing committed results", () => {
+    const props = {
+      formValues: {
+        baseNetwork: "192.168.1.0",
+        baseCidr: "30",
+        subnets: [{ id: 1, name: "LAN", hosts: 50 }],
+        sourceType: "history" as const,
+        aiPrompt: null,
+        aiRationale: null,
+      },
+      isAiPlan: false,
+      isCloudLinkedPlan: true,
+      shouldSaveToCloud: false,
+      isAuthenticated: true,
+      signInToSaveMessage: "Sign in.",
+      planName: "Legacy",
+      activeCloudPlanId: "legacy",
+      updateSuccessMessage: "Updated.",
+      saveSuccessMessage: "Saved.",
+      saveCalculation: vi.fn().mockResolvedValue(undefined),
+      calculateVlsm,
+      resetPlanForm: vi.fn(),
+      setPlanName: vi.fn(),
+      setShouldSaveToCloud: vi.fn(),
+      setActiveCloudPlanId: vi.fn(),
+      emailConfirmedFromQuery: false,
+      buildAppUrl: () => "/app",
+      resolveViewFromQuery: () => "table" as const,
+      replaceToCurrentView: vi.fn(),
+    } satisfies UseCalculatorPageControllerArgs
+    const { result } = renderHook(() => useCalculatorPageController(props))
+
+    act(() =>
+      result.current.setCalculation(null, [
+        {
+          code: "INSUFFICIENT_ADDRESS_SPACE",
+          message: "Subnet requirements do not fit inside the parent network.",
+          field: "subnets",
+        },
+      ])
+    )
+
+    expect(result.current.calculation).toBeNull()
+    expect(result.current.submittedIssues).toContainEqual(
+      expect.objectContaining({ code: "INSUFFICIENT_ADDRESS_SPACE" })
+    )
+  })
 })

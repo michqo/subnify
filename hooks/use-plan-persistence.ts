@@ -6,7 +6,6 @@ import { toast } from "sonner"
 
 import { useSaveCalculationMutation } from "@/lib/queries/calculations"
 import type { PlanSource, SubnetInput } from "@/lib/state/subnet-plan-types"
-import type { VlsmAllocation } from "@/lib/vlsm"
 
 type SaveCalculationOptions = {
   sourceType?: PlanSource
@@ -39,11 +38,12 @@ export function usePlanPersistence({
   const saveCalculationMutation = useSaveCalculationMutation()
   const [planName, setPlanName] = useState("")
   const [shouldSaveToCloud, setShouldSaveToCloud] = useState(false)
-  const [activeCloudPlanId, setActiveCloudPlanId] = useState<string | null>(null)
+  const [activeCloudPlanId, setActiveCloudPlanId] = useState<string | null>(
+    null
+  )
 
   const saveCalculation = useCallback(
     async (
-      calculatedResults: VlsmAllocation[],
       snapshot: SaveCalculationSnapshot,
       options?: SaveCalculationOptions
     ) => {
@@ -58,7 +58,6 @@ export function usePlanPersistence({
       try {
         const savedCalculationId = await saveCalculationMutation.mutateAsync({
           userId: user.id,
-          calculatedResults,
           snapshot,
           options,
         })
@@ -66,11 +65,18 @@ export function usePlanPersistence({
         setActiveCloudPlanId(savedCalculationId)
         toast.success(options?.successMessage ?? saveSuccessMessage)
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Could not save calculation."
+        const message =
+          error instanceof Error ? error.message : "Could not save calculation."
         toast.error(message)
       }
     },
-    [isAuthLoading, isAuthenticated, saveCalculationMutation, saveSuccessMessage, user]
+    [
+      isAuthLoading,
+      isAuthenticated,
+      saveCalculationMutation,
+      saveSuccessMessage,
+      user,
+    ]
   )
 
   return {

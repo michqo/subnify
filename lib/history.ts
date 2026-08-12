@@ -1,4 +1,10 @@
-import type { VlsmAllocation } from "@/lib/vlsm"
+import type { ReplacePlanInput } from "@/lib/state/subnet-plan-types"
+import {
+  calculateVlsm,
+  type VlsmAllocation,
+  type VlsmCalculationSuccess,
+  type VlsmIssue,
+} from "@/lib/vlsm"
 
 export type SubnetInput = {
   name: string
@@ -47,7 +53,10 @@ export function parseSubnetInputArray(value: unknown): SubnetInput[] {
       const candidate = item as { name?: unknown; hosts?: unknown }
       return {
         name: typeof candidate.name === "string" ? candidate.name : "LAN",
-        hosts: typeof candidate.hosts === "number" ? candidate.hosts : Number(candidate.hosts) || 0,
+        hosts:
+          typeof candidate.hosts === "number"
+            ? candidate.hosts
+            : Number(candidate.hosts) || 0,
       }
     })
     .filter((item): item is SubnetInput => item !== null)
@@ -78,4 +87,35 @@ export function parseVlsmAllocations(value: unknown): VlsmAllocation[] {
       typeof allocation.blockSize === "number"
     )
   })
+}
+
+export function recalculateHistoryRecord(record: CalculationRecord): {
+  inputs: ReplacePlanInput
+  calculation: VlsmCalculationSuccess | null
+  issues: VlsmIssue[]
+} {
+  const inputs: ReplacePlanInput = {
+    baseNetwork: record.base_network,
+    baseCidr: String(record.base_cidr),
+    subnets: record.input_subnets.map((subnet, index) => ({
+      id: index + 1,
+      name: subnet.name,
+      hosts: subnet.hosts,
+    })),
+    sourceType: record.source_type === "ai_design" ? "ai_design" : "history",
+    aiPrompt: record.source_type === "ai_design" ? record.ai_prompt : null,
+    aiRationale:
+      record.source_type === "ai_design" ? record.ai_rationale : null,
+    suggestedTitle: record.title,
+  }
+  const result = calculateVlsm({
+    baseNetwork: inputs.baseNetwork,
+    baseCidr:
+      inputs.baseCidr.trim() === "" ? Number.NaN : Number(inputs.baseCidr),
+    subnets: inputs.subnets,
+  })
+
+  return result.ok
+    ? { inputs, calculation: result, issues: [] }
+    : { inputs, calculation: null, issues: result.issues }
 }

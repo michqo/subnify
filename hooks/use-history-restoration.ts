@@ -5,13 +5,13 @@ import type { Dispatch, SetStateAction } from "react"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { toast } from "sonner"
 
-import { parseSubnetInputArray } from "@/lib/history"
+import {
+  parseSubnetInputArray,
+  recalculateHistoryRecord,
+  type CalculationRecord,
+} from "@/lib/history"
 import type { ReplacePlanInput } from "@/lib/state/subnet-plan-types"
-import type {
-  VlsmCalculationResult,
-  VlsmCalculationSuccess,
-  VlsmPlanInput,
-} from "@/lib/vlsm"
+import type { VlsmCalculationSuccess, VlsmIssue } from "@/lib/vlsm"
 
 type UseHistoryRestorationArgs = {
   historyId: string | null
@@ -19,8 +19,10 @@ type UseHistoryRestorationArgs = {
   supabase: SupabaseClient
   replacePlan: (plan: ReplacePlanInput) => void
   replaceToCurrentView: () => void
-  calculateVlsmFallback: (input: VlsmPlanInput) => VlsmCalculationResult
-  setCalculation: (calculation: VlsmCalculationSuccess | null) => void
+  setCalculation: (
+    calculation: VlsmCalculationSuccess | null,
+    issues?: VlsmIssue[]
+  ) => void
   setPlanName: Dispatch<SetStateAction<string>>
   setActiveCloudPlanId: Dispatch<SetStateAction<string | null>>
 }
@@ -31,7 +33,6 @@ export function useHistoryRestoration({
   supabase,
   replacePlan,
   replaceToCurrentView,
-  calculateVlsmFallback,
   setCalculation,
   setPlanName,
   setActiveCloudPlanId,
@@ -46,7 +47,9 @@ export function useHistoryRestoration({
     const restoreFromHistory = async () => {
       const { data, error } = await supabase
         .from("calculations")
-        .select("id,title,source_type,ai_prompt,ai_rationale,base_network,base_cidr,input_subnets,result_subnets")
+        .select(
+          "id,title,source_type,ai_prompt,ai_rationale,base_network,base_cidr,input_subnets,total_required_hosts,total_usable_hosts,created_at"
+        )
         .eq("id", historyId)
         .single()
 
@@ -59,39 +62,37 @@ export function useHistoryRestoration({
         return
       }
 
-      const inputSubnets = parseSubnetInputArray(data.input_subnets)
-      const restoredSubnets = inputSubnets.map((subnet, index) => ({
-        id: index + 1,
-        name: subnet.name ?? `LAN ${String.fromCharCode(65 + (index % 26))}`,
-        hosts: subnet.hosts,
-      }))
+      const record: CalculationRecord = {
+        id: String(data.id ?? ""),
+        title: typeof data.title === "string" ? data.title : null,
+        source_type: data.source_type === "ai_design" ? "ai_design" : "manual",
+        ai_prompt: typeof data.ai_prompt === "string" ? data.ai_prompt : null,
+        ai_rationale:
+          typeof data.ai_rationale === "string" ? data.ai_rationale : null,
+        base_network: String(data.base_network ?? ""),
+        base_cidr: Number(data.base_cidr),
+        input_subnets: parseSubnetInputArray(data.input_subnets),
+        result_subnets: [],
+        total_required_hosts: Number(data.total_required_hosts ?? 0),
+        total_usable_hosts: Number(data.total_usable_hosts ?? 0),
+        created_at: typeof data.created_at === "string" ? data.created_at : "",
+      }
+      const restored = recalculateHistoryRecord(record)
 
-      const restoredBaseNetwork = String(data.base_network ?? "192.168.1.0")
-      const restoredBaseCidr = String(data.base_cidr ?? "24")
-
-      replacePlan({
-        baseNetwork: restoredBaseNetwork,
-        baseCidr: restoredBaseCidr,
-        subnets: restoredSubnets,
-        sourceType: data.source_type === "ai_design" ? "ai_design" : "history",
-        aiPrompt: data.source_type === "ai_design" ? data.ai_prompt : null,
-        aiRationale: data.source_type === "ai_design" ? data.ai_rationale : null,
-        suggestedTitle: typeof data.title === "string" ? data.title : null,
-      })
-
-      const restoredCalculation = calculateVlsmFallback({
-        baseNetwork: restoredBaseNetwork,
-        baseCidr:
-          restoredBaseCidr.trim() === ""
-            ? Number.NaN
-            : Number(restoredBaseCidr),
-        subnets: restoredSubnets,
-      })
-      setCalculation(restoredCalculation.ok ? restoredCalculation : null)
+      replacePlan(restored.inputs)
+      if (restored.calculation) {
+        setCalculation(restored.calculation)
+      } else {
+        setCalculation(null, restored.issues)
+      }
 
       setPlanName(typeof data.title === "string" ? data.title : "")
-      setActiveCloudPlanId(data.id)
-      toast.info(data.source_type === "ai_design" ? "Editing AI design plan from history." : "Editing saved plan from history.")
+      setActiveCloudPlanId(record.id)
+      toast.info(
+        data.source_type === "ai_design"
+          ? "Editing AI design plan from history."
+          : "Editing saved plan from history."
+      )
       replaceToCurrentView()
     }
 
@@ -101,7 +102,6 @@ export function useHistoryRestoration({
       ignore = true
     }
   }, [
-    calculateVlsmFallback,
     historyId,
     isAuthenticated,
     replacePlan,

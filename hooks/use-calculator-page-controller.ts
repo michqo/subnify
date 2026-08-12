@@ -80,30 +80,46 @@ export function useCalculatorPageController({
   resolveViewFromQuery,
   replaceToCurrentView,
 }: UseCalculatorPageControllerArgs) {
-  const [calculation, setCalculation] = useState<VlsmCalculationSuccess | null>(null)
+  const [calculation, setCalculation] = useState<VlsmCalculationSuccess | null>(
+    null
+  )
   const [submittedIssues, setSubmittedIssues] = useState<VlsmIssue[]>([])
-  const [committedPlanFingerprint, setCommittedPlanFingerprint] = useState<string | null>(null)
+  const [committedPlanFingerprint, setCommittedPlanFingerprint] = useState<
+    string | null
+  >(null)
   const { copied, copyResults } = useCopyResults()
   const [exporting, setExporting] = useState(false)
   const [selectedSubnet, setSelectedSubnet] = useState<number | null>(null)
   const currentPlanFingerprint = useMemo(
-    () => JSON.stringify([formValues.baseNetwork, formValues.baseCidr, formValues.subnets]),
+    () =>
+      JSON.stringify([
+        formValues.baseNetwork,
+        formValues.baseCidr,
+        formValues.subnets,
+      ]),
     [formValues.baseNetwork, formValues.baseCidr, formValues.subnets]
   )
   const diagnostics = useMemo(
-    () => diagnosePlan({
-      baseNetwork: formValues.baseNetwork,
-      baseCidr: formValues.baseCidr,
-      subnets: formValues.subnets,
-    }),
+    () =>
+      diagnosePlan({
+        baseNetwork: formValues.baseNetwork,
+        baseCidr: formValues.baseCidr,
+        subnets: formValues.subnets,
+      }),
     [formValues.baseNetwork, formValues.baseCidr, formValues.subnets]
   )
 
-  const replaceCalculation = useCallback((nextCalculation: VlsmCalculationSuccess | null) => {
-    setCommittedPlanFingerprint(null)
-    setSubmittedIssues([])
-    setCalculation(nextCalculation)
-  }, [])
+  const replaceCalculation = useCallback(
+    (
+      nextCalculation: VlsmCalculationSuccess | null,
+      issues: VlsmIssue[] = []
+    ) => {
+      setCommittedPlanFingerprint(null)
+      setSubmittedIssues(issues)
+      setCalculation(nextCalculation)
+    },
+    []
+  )
 
   useEffect(() => {
     if (calculation !== null && committedPlanFingerprint === null) {
@@ -119,7 +135,9 @@ export function useCalculatorPageController({
   useEffect(() => {
     let emailConfirmedFromHash = false
     if (typeof window !== "undefined" && window.location.hash) {
-      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""))
+      const hashParams = new URLSearchParams(
+        window.location.hash.replace(/^#/, "")
+      )
       const callbackType = hashParams.get("type")
       emailConfirmedFromHash = callbackType === "signup"
     }
@@ -135,7 +153,12 @@ export function useCalculatorPageController({
     } else {
       replaceToCurrentView()
     }
-  }, [emailConfirmedFromQuery, buildAppUrl, resolveViewFromQuery, replaceToCurrentView])
+  }, [
+    emailConfirmedFromQuery,
+    buildAppUrl,
+    resolveViewFromQuery,
+    replaceToCurrentView,
+  ])
 
   const calculateVLSM = useCallback(() => {
     const baseCidr =
@@ -180,7 +203,9 @@ export function useCalculatorPageController({
         aiRationale: formValues.aiRationale,
         title: planName,
         calculationId: activeCloudPlanId,
-        successMessage: isCloudLinkedPlan ? updateSuccessMessage : saveSuccessMessage,
+        successMessage: isCloudLinkedPlan
+          ? updateSuccessMessage
+          : saveSuccessMessage,
       }
     )
   }, [

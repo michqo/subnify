@@ -33,8 +33,13 @@ function CalculatorPageContent() {
     resetPlanForm,
   } = useCalculatorPlanForm()
 
-  const { activeView, buildAppUrl, resolveViewFromQuery, handleViewChange, replaceToCurrentView } =
-    usePlanViewState(searchParams)
+  const {
+    activeView,
+    buildAppUrl,
+    resolveViewFromQuery,
+    handleViewChange,
+    replaceToCurrentView,
+  } = usePlanViewState(searchParams)
   const saveSuccessMessage = "Calculation saved to history."
   const {
     planName,
@@ -58,7 +63,11 @@ function CalculatorPageContent() {
   const signInToSaveMessage = "Sign in to save calculations to cloud history."
 
   useEffect(() => {
-    if (planName.trim().length === 0 && typeof formValues.suggestedTitle === "string" && formValues.suggestedTitle.trim().length > 0) {
+    if (
+      planName.trim().length === 0 &&
+      typeof formValues.suggestedTitle === "string" &&
+      formValues.suggestedTitle.trim().length > 0
+    ) {
       setPlanName(formValues.suggestedTitle.trim())
     }
   }, [formValues.suggestedTitle, planName, setPlanName])
@@ -88,8 +97,8 @@ function CalculatorPageContent() {
     activeCloudPlanId,
     updateSuccessMessage,
     saveSuccessMessage,
-    saveCalculation: (calculation, snapshot, options) =>
-      saveCalculation(calculation.allocations, snapshot, options),
+    saveCalculation: (_calculation, snapshot, options) =>
+      saveCalculation(snapshot, options),
     calculateVlsm,
     resetPlanForm,
     setPlanName,
@@ -107,7 +116,6 @@ function CalculatorPageContent() {
     supabase,
     replacePlan,
     replaceToCurrentView,
-    calculateVlsmFallback: calculateVlsm,
     setCalculation,
     setPlanName,
     setActiveCloudPlanId,
@@ -123,11 +131,12 @@ function CalculatorPageContent() {
         hasMeaningfulEdits={
           formValues.baseNetwork !== "192.168.1.0" ||
           formValues.baseCidr !== "24" ||
-          JSON.stringify(formValues.subnets) !== JSON.stringify([
-            { id: 1, name: "LAN A", hosts: 50 },
-            { id: 2, name: "LAN B", hosts: 25 },
-            { id: 3, name: "LAN C", hosts: 10 },
-          ])
+          JSON.stringify(formValues.subnets) !==
+            JSON.stringify([
+              { id: 1, name: "LAN A", hosts: 50 },
+              { id: 2, name: "LAN B", hosts: 25 },
+              { id: 3, name: "LAN C", hosts: 10 },
+            ])
         }
         onApplyTemplate={(plan) => {
           replacePlan(plan)
@@ -142,40 +151,40 @@ function CalculatorPageContent() {
         }}
         editor={
           <CalculatorInputSection
-              baseNetwork={formValues.baseNetwork}
-              baseCidr={formValues.baseCidr}
-              onBaseNetworkChange={setBaseNetwork}
-              onBaseCidrChange={setBaseCidr}
-              isAuthenticated={isAuthenticated}
-              planName={planName}
-              onPlanNameChange={setPlanName}
-              isAiPlan={isAiPlan}
-              isCloudLinkedPlan={isCloudLinkedPlan}
-              isEditingAiCloudPlan={isEditingAiCloudPlan}
-              shouldSaveToCloud={shouldSaveToCloud}
-              onShouldSaveToCloudChange={setShouldSaveToCloud}
-              subnets={formValues.subnets}
-              onAddSubnet={addSubnet}
-              onUpdateSubnet={updateSubnet}
-              onRemoveSubnet={removeSubnet}
-              onSubmit={calculateVLSM}
-              onReset={resetForm}
-              submittedIssues={submittedIssues}
-            />
+            baseNetwork={formValues.baseNetwork}
+            baseCidr={formValues.baseCidr}
+            onBaseNetworkChange={setBaseNetwork}
+            onBaseCidrChange={setBaseCidr}
+            isAuthenticated={isAuthenticated}
+            planName={planName}
+            onPlanNameChange={setPlanName}
+            isAiPlan={isAiPlan}
+            isCloudLinkedPlan={isCloudLinkedPlan}
+            isEditingAiCloudPlan={isEditingAiCloudPlan}
+            shouldSaveToCloud={shouldSaveToCloud}
+            onShouldSaveToCloudChange={setShouldSaveToCloud}
+            subnets={formValues.subnets}
+            onAddSubnet={addSubnet}
+            onUpdateSubnet={updateSubnet}
+            onRemoveSubnet={removeSubnet}
+            onSubmit={calculateVLSM}
+            onReset={resetForm}
+            submittedIssues={submittedIssues}
+          />
         }
         resultsContent={
           <CalculatorResultsSection
-              calculation={calculation}
-              resultsAreStale={resultsAreStale}
-              activeView={activeView}
-              onViewChange={handleViewChange}
-              copied={copied}
-              exporting={exporting}
-              onCopyResults={onCopyResults}
-              onExportPdf={exportPdf}
-              selectedSubnet={selectedSubnet}
-              onToggleSubnet={handleToggleSubnet}
-            />
+            calculation={calculation}
+            resultsAreStale={resultsAreStale}
+            activeView={activeView}
+            onViewChange={handleViewChange}
+            copied={copied}
+            exporting={exporting}
+            onCopyResults={onCopyResults}
+            onExportPdf={exportPdf}
+            selectedSubnet={selectedSubnet}
+            onToggleSubnet={handleToggleSubnet}
+          />
         }
       />
     </div>
