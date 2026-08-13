@@ -1,37 +1,30 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { completion, from, openAiConstructor, quotaQuery, rpc } = vi.hoisted(() => {
-  const quotaQuery = {
-    select: vi.fn(),
-    eq: vi.fn(),
-    gte: vi.fn(),
-    or: vi.fn(),
-  }
-
-  quotaQuery.select.mockReturnValue(quotaQuery)
-  quotaQuery.eq.mockReturnValue(quotaQuery)
-  quotaQuery.gte.mockReturnValue(quotaQuery)
-  quotaQuery.or.mockResolvedValue({ count: 0, error: null })
-
-  return {
-    completion: vi.fn(),
-    from: vi.fn(() => quotaQuery),
-    openAiConstructor: vi.fn(),
-    quotaQuery,
-    rpc: vi.fn(),
-  }
-})
+const {
+  adminRpc,
+  authGetUser,
+  authRpc,
+  completion,
+  createAdminClient,
+  openAiConstructor,
+} = vi.hoisted(() => ({
+  adminRpc: vi.fn(),
+  authGetUser: vi.fn(),
+  authRpc: vi.fn(),
+  completion: vi.fn(),
+  createAdminClient: vi.fn(),
+  openAiConstructor: vi.fn(),
+}))
 
 vi.mock("@/lib/supabase/server", () => ({
   createSupabaseServerClient: async () => ({
-    auth: {
-      getUser: vi.fn().mockResolvedValue({
-        data: { user: { id: "user-1" } },
-      }),
-    },
-    from,
-    rpc,
+    auth: { getUser: authGetUser },
+    rpc: authRpc,
   }),
+}))
+
+vi.mock("@/lib/supabase/admin", () => ({
+  createSupabaseAdminClient: () => createAdminClient(),
 }))
 
 vi.mock("openai", () => ({
@@ -45,6 +38,17 @@ vi.mock("openai", () => ({
 }))
 
 import { GET, POST } from "@/app/api/ai-designer/route"
+
+const USER_ID = "00000000-0000-4000-8000-000000000001"
+const REQUEST_ID = "00000000-0000-4000-8000-000000000002"
+
+const reservation = {
+  request_id: REQUEST_ID,
+  limit: 3,
+  used: 1,
+  remaining: 2,
+  window_hours: 24,
+}
 
 function requestWithPrompt(prompt: string): Request {
   return new Request("http://localhost/api/ai-designer", {
@@ -78,10 +82,14 @@ function validModelJson() {
   })
 }
 
-function rpcSuccess(name: string) {
+function adminRpcSuccess(name: string) {
   if (name === "reserve_ai_design_request") {
+    return Promise.resolve({ data: [reservation], error: null })
+  }
+
+  if (name === "get_ai_design_quota") {
     return Promise.resolve({
-      data: [{ request_id: "request-1", used: 1, remaining: 2 }],
+      data: [{ limit: 3, used: 2, remaining: 1, window_hours: 24 }],
       error: null,
     })
   }
@@ -94,12 +102,9 @@ describe("ai designer route", () => {
     vi.clearAllMocks()
     vi.stubEnv("OPENROUTER_API_KEY", "test-key")
     vi.stubEnv("OPENROUTER_MODEL", "test-model")
-    vi.stubEnv("AI_DESIGN_DAILY_LIMIT", "3")
-    rpc.mockImplementation(rpcSuccess)
-    quotaQuery.select.mockReturnValue(quotaQuery)
-    quotaQuery.eq.mockReturnValue(quotaQuery)
-    quotaQuery.gte.mockReturnValue(quotaQuery)
-    quotaQuery.or.mockResolvedValue({ count: 2, error: null })
+    authGetUser.mockResolvedValue({ data: { user: { id: USER_ID } } })
+    createAdminClient.mockReturnValue({ rpc: adminRpc })
+    adminRpc.mockImplementation(adminRpcSuccess)
     completion.mockResolvedValue(validModelJson())
   })
 
@@ -112,7 +117,7 @@ describe("ai designer route", () => {
     const response = await POST(requestWithPrompt("x".repeat(4001)))
 
     expect(response.status).toBe(400)
-    expect(rpc).not.toHaveBeenCalled()
+    expect(adminRpc).not.toHaveBeenCalled()
     expect(completion).not.toHaveBeenCalled()
   })
 
@@ -120,7 +125,7 @@ describe("ai designer route", () => {
     const response = await POST(requestWithPrompt("   "))
 
     expect(response.status).toBe(400)
-    expect(rpc).not.toHaveBeenCalled()
+    expect(adminRpc).not.toHaveBeenCalled()
   })
 
   it("checks provider configuration before quota reservation", async () => {
@@ -129,7 +134,7 @@ describe("ai designer route", () => {
     const response = await POST(requestWithPrompt("office"))
 
     expect(response.status).toBe(500)
-    expect(rpc).not.toHaveBeenCalled()
+    expect(adminRpc).not.toHaveBeenCalled()
     await expect(response.json()).resolves.toMatchObject({
       error: "AI generation is not configured.",
       retryable: false,
@@ -137,23 +142,31 @@ describe("ai designer route", () => {
     })
   })
 
-  it("reserves quota before calling the provider and completes only an engine-valid plan", async () => {
-    const response = await POST(requestWithPrompt("  office  "))
+  it("uses cookie auth only to verify identity and admin RPCs for quota state", async () => {
+    const response = await POST(requestWithPrompt("office"))
 
     expect(response.status).toBe(200)
-    expect(rpc).toHaveBeenNthCalledWith(1, "reserve_ai_design_request", {
-      p_limit: 3,
-      p_window_hours: 24,
+    expect(authGetUser).toHaveBeenCalledOnce()
+    expect(authRpc).not.toHaveBeenCalled()
+    expect(adminRpc).toHaveBeenNthCalledWith(1, "reserve_ai_design_request", {
+      p_user_id: USER_ID,
       p_model: "test-model",
     })
-    expect(rpc).toHaveBeenNthCalledWith(2, "complete_ai_design_request", {
-      p_request_id: "request-1",
+    expect(adminRpc).toHaveBeenNthCalledWith(2, "complete_ai_design_request", {
+      p_user_id: USER_ID,
+      p_request_id: REQUEST_ID,
       p_status: "success",
       p_latency_ms: expect.any(Number),
     })
-    expect(rpc.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(adminRpc.mock.invocationCallOrder[0]).toBeLessThan(
       completion.mock.invocationCallOrder[0]
     )
+  })
+
+  it("returns only a plan accepted by the shared engine", async () => {
+    const response = await POST(requestWithPrompt("  office  "))
+
+    expect(response.status).toBe(200)
     await expect(response.json()).resolves.toMatchObject({
       plan: {
         baseNetwork: "192.168.1.0",
@@ -187,15 +200,19 @@ describe("ai designer route", () => {
     await expect(response.json()).resolves.toMatchObject({
       plan: { baseNetwork: null, baseCidr: null },
     })
-    expect(rpc).toHaveBeenLastCalledWith(
-      "complete_ai_design_request",
-      expect.objectContaining({ p_status: "success" })
-    )
   })
 
   it("does not call the provider when the atomic reservation reports exhausted quota", async () => {
-    rpc.mockResolvedValueOnce({
-      data: [{ request_id: null, used: 3, remaining: 0 }],
+    adminRpc.mockResolvedValueOnce({
+      data: [
+        {
+          request_id: null,
+          limit: 3,
+          used: 3,
+          remaining: 0,
+          window_hours: 24,
+        },
+      ],
       error: null,
     })
 
@@ -203,7 +220,7 @@ describe("ai designer route", () => {
 
     expect(response.status).toBe(429)
     expect(completion).not.toHaveBeenCalled()
-    expect(rpc).toHaveBeenCalledTimes(1)
+    expect(adminRpc).toHaveBeenCalledTimes(1)
     await expect(response.json()).resolves.toMatchObject({
       error: "Daily limit reached. You can generate up to 3 designs per 24 hours.",
       quota: { limit: 3, used: 3, remaining: 0, windowHours: 24 },
@@ -212,8 +229,26 @@ describe("ai designer route", () => {
     })
   })
 
+  it("returns a stable retryable error when admin client configuration fails", async () => {
+    createAdminClient.mockImplementationOnce(() => {
+      throw new Error("secret service role configuration detail")
+    })
+
+    const response = await POST(requestWithPrompt("office"))
+    const payload = await response.json()
+
+    expect(response.status).toBe(503)
+    expect(payload).toMatchObject({
+      error: "AI generation is temporarily unavailable. Try again.",
+      retryable: true,
+      correlationId: expect.any(String),
+    })
+    expect(JSON.stringify(payload)).not.toContain("service role")
+    expect(completion).not.toHaveBeenCalled()
+  })
+
   it("returns a stable retryable error when quota reservation fails", async () => {
-    rpc.mockResolvedValueOnce({
+    adminRpc.mockResolvedValueOnce({
       data: null,
       error: { message: "private database detail" },
     })
@@ -229,6 +264,31 @@ describe("ai designer route", () => {
     })
     expect(JSON.stringify(payload)).not.toContain("private database detail")
     expect(completion).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ["missing row", []],
+    [
+      "invalid request UUID",
+      [{ ...reservation, request_id: "attacker-controlled-id" }],
+    ],
+    ["fractional usage", [{ ...reservation, used: 1.5 }]],
+    ["negative remaining", [{ ...reservation, remaining: -1 }]],
+    ["inconsistent totals", [{ ...reservation, used: 2, remaining: 2 }]],
+    ["hostile policy limit", [{ ...reservation, limit: 999_999 }]],
+    ["hostile policy window", [{ ...reservation, window_hours: 876_000 }]],
+  ])("rejects a malformed reservation: %s", async (_label, data) => {
+    adminRpc.mockResolvedValueOnce({ data, error: null })
+
+    const response = await POST(requestWithPrompt("office"))
+
+    expect(response.status).toBe(503)
+    expect(completion).not.toHaveBeenCalled()
+    await expect(response.json()).resolves.toMatchObject({
+      error: "AI generation is temporarily unavailable. Try again.",
+      retryable: true,
+      correlationId: expect.any(String),
+    })
   })
 
   it("marks invalid model output failed and returns a retryable stable error", async () => {
@@ -249,9 +309,9 @@ describe("ai designer route", () => {
       correlationId: expect.any(String),
       quota: { limit: 3, used: 0, remaining: 3, windowHours: 24 },
     })
-    expect(rpc).toHaveBeenLastCalledWith(
+    expect(adminRpc).toHaveBeenLastCalledWith(
       "complete_ai_design_request",
-      expect.objectContaining({ p_status: "failed" })
+      expect.objectContaining({ p_user_id: USER_ID, p_status: "failed" })
     )
   })
 
@@ -264,9 +324,9 @@ describe("ai designer route", () => {
     const response = await POST(requestWithPrompt("office"))
 
     expect(response.status).toBe(422)
-    expect(rpc).toHaveBeenLastCalledWith(
+    expect(adminRpc).toHaveBeenLastCalledWith(
       "complete_ai_design_request",
-      expect.objectContaining({ p_status: "failed" })
+      expect.objectContaining({ p_user_id: USER_ID, p_status: "failed" })
     )
     await expect(response.json()).resolves.toMatchObject({
       error: "Generated requirements could not be validated. Try again.",
@@ -293,9 +353,9 @@ describe("ai designer route", () => {
       correlationId: expect.any(String),
       quota: { limit: 3, used: 0, remaining: 3, windowHours: 24 },
     })
-    expect(rpc).toHaveBeenLastCalledWith(
+    expect(adminRpc).toHaveBeenLastCalledWith(
       "complete_ai_design_request",
-      expect.objectContaining({ p_status: "failed" })
+      expect.objectContaining({ p_user_id: USER_ID, p_status: "failed" })
     )
     expect(consoleError).toHaveBeenCalledWith({
       correlationId: payload.correlationId,
@@ -305,21 +365,52 @@ describe("ai designer route", () => {
     })
   })
 
-  it("counts rolling successes and only recent pending reservations in GET quota", async () => {
+  it("keeps a failed completion reservation pending and returns stable quota", async () => {
+    const providerError = new Error("secret upstream detail")
+    completion.mockRejectedValue(providerError)
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+    adminRpc
+      .mockResolvedValueOnce({ data: [reservation], error: null })
+      .mockResolvedValueOnce({
+        data: null,
+        error: { message: "secret completion detail" },
+      })
+
+    const response = await POST(requestWithPrompt("office"))
+    const payload = await response.json()
+
+    expect(response.status).toBe(502)
+    expect(payload).toMatchObject({
+      error: "AI provider request failed. Try again.",
+      quota: { limit: 3, used: 1, remaining: 2, windowHours: 24 },
+    })
+    expect(JSON.stringify(payload)).not.toContain("secret")
+  })
+
+  it("gets quota through the same DB-owned policy RPC", async () => {
     const response = await GET()
 
     expect(response.status).toBe(200)
+    expect(authRpc).not.toHaveBeenCalled()
+    expect(adminRpc).toHaveBeenCalledWith("get_ai_design_quota", {
+      p_user_id: USER_ID,
+    })
     await expect(response.json()).resolves.toEqual({
       quota: { limit: 3, used: 2, remaining: 1, windowHours: 24 },
     })
-    expect(quotaQuery.gte).toHaveBeenCalledWith(
-      "created_at",
-      expect.any(String)
-    )
-    expect(quotaQuery.or).toHaveBeenCalledWith(
-      expect.stringMatching(
-        /^status\.eq\.success,and\(status\.eq\.pending,created_at\.gte\..+\)$/
-      )
-    )
+  })
+
+  it("rejects a malformed quota snapshot without returning raw detail", async () => {
+    adminRpc.mockResolvedValueOnce({
+      data: [{ limit: 3, used: 4, remaining: -1, window_hours: 24 }],
+      error: null,
+    })
+
+    const response = await GET()
+
+    expect(response.status).toBe(503)
+    await expect(response.json()).resolves.toEqual({
+      error: "Quota is temporarily unavailable.",
+    })
   })
 })

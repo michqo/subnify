@@ -6,28 +6,18 @@ import {
   type DesignerPlan,
   type QuotaSnapshot,
 } from "@/lib/ai-designer-types"
+import { createSupabaseAdminClient } from "@/lib/supabase/admin"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { calculateVlsm } from "@/lib/vlsm"
 
-type QuotaReservation = {
-  request_id: string | null
-  used: number
-  remaining: number
-}
-
 type CompletionStatus = "success" | "failed"
 
-const WINDOW_HOURS = 24
-const PENDING_TTL_MINUTES = 5
+const MAX_QUOTA_LIMIT = 100
+const MAX_QUOTA_WINDOW_HOURS = 168
+const MAX_RECORDED_LATENCY_MS = 900_000
 const PROVIDER_TIMEOUT_MS = 120_000
-
-function getDailyLimit() {
-  const configured = Number(process.env.AI_DESIGN_DAILY_LIMIT)
-  if (Number.isFinite(configured) && configured > 0) {
-    return Math.floor(configured)
-  }
-  return 3
-}
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 function sanitizePlan(input: unknown): DesignerPlan {
   const source =
@@ -88,16 +78,79 @@ function sanitizePlan(input: unknown): DesignerPlan {
   }
 }
 
-function quotaFromReservation(
-  reservation: QuotaReservation,
-  limit: number
-): QuotaSnapshot {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
+}
+
+function parseQuotaRow(value: unknown): QuotaSnapshot | null {
+  if (!isRecord(value)) return null
+
+  const limit = value.limit
+  const used = value.used
+  const remaining = value.remaining
+  const windowHours = value.window_hours
+
+  if (
+    !Number.isInteger(limit) ||
+    typeof limit !== "number" ||
+    limit < 1 ||
+    limit > MAX_QUOTA_LIMIT ||
+    !Number.isInteger(used) ||
+    typeof used !== "number" ||
+    used < 0 ||
+    used > limit ||
+    !Number.isInteger(remaining) ||
+    typeof remaining !== "number" ||
+    remaining < 0 ||
+    remaining > limit ||
+    used + remaining !== limit ||
+    !Number.isInteger(windowHours) ||
+    typeof windowHours !== "number" ||
+    windowHours < 1 ||
+    windowHours > MAX_QUOTA_WINDOW_HOURS
+  ) {
+    return null
+  }
+
   return {
     limit,
-    used: reservation.used,
-    remaining: reservation.remaining,
-    windowHours: WINDOW_HOURS,
+    used,
+    remaining,
+    windowHours,
   }
+}
+
+function parseSingleQuotaRow(data: unknown): QuotaSnapshot | null {
+  if (!Array.isArray(data) || data.length !== 1) return null
+  return parseQuotaRow(data[0])
+}
+
+function parseReservation(data: unknown):
+  | { requestId: string | null; quota: QuotaSnapshot }
+  | null {
+  if (!Array.isArray(data) || data.length !== 1 || !isRecord(data[0])) {
+    return null
+  }
+
+  const quota = parseQuotaRow(data[0])
+  const requestId = data[0].request_id
+
+  if (!quota) return null
+  if (requestId === null) {
+    return quota.used === quota.limit && quota.remaining === 0
+      ? { requestId, quota }
+      : null
+  }
+
+  if (
+    typeof requestId !== "string" ||
+    !UUID_PATTERN.test(requestId) ||
+    quota.used < 1
+  ) {
+    return null
+  }
+
+  return { requestId, quota }
 }
 
 function releasedQuota(quota: QuotaSnapshot): QuotaSnapshot {
@@ -136,38 +189,19 @@ function providerFailureMetadata(error: unknown) {
 }
 
 async function getQuotaSnapshot(
-  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
   userId: string
 ) {
-  const limit = getDailyLimit()
-  const windowStart = new Date(
-    Date.now() - WINDOW_HOURS * 60 * 60 * 1000
-  ).toISOString()
-  const pendingCutoff = new Date(
-    Date.now() - PENDING_TTL_MINUTES * 60 * 1000
-  ).toISOString()
+  const { data, error } = await supabase.rpc("get_ai_design_quota", {
+    p_user_id: userId,
+  })
+  const quota = parseSingleQuotaRow(data)
 
-  const { count, error } = await supabase
-    .from("ai_design_requests")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId)
-    .gte("created_at", windowStart)
-    .or(
-      `status.eq.success,and(status.eq.pending,created_at.gte.${pendingCutoff})`
-    )
-
-  if (error) {
+  if (error || !quota) {
     throw new Error("quota snapshot unavailable")
   }
 
-  const used = count ?? 0
-
-  return {
-    limit,
-    used,
-    remaining: Math.max(0, limit - used),
-    windowHours: WINDOW_HOURS,
-  } satisfies QuotaSnapshot
+  return quota
 }
 
 export async function GET() {
@@ -181,7 +215,7 @@ export async function GET() {
   }
 
   try {
-    const quota = await getQuotaSnapshot(supabase, user.id)
+    const quota = await getQuotaSnapshot(createSupabaseAdminClient(), user.id)
     return NextResponse.json({ quota })
   } catch {
     return NextResponse.json(
@@ -239,18 +273,16 @@ export async function POST(request: Request) {
     )
   }
 
-  const limit = getDailyLimit()
-  let reservation: QuotaReservation | undefined
+  let admin: ReturnType<typeof createSupabaseAdminClient>
+  let reservation: ReturnType<typeof parseReservation>
 
   try {
-    const { data, error } = await supabase.rpc("reserve_ai_design_request", {
-      p_limit: limit,
-      p_window_hours: WINDOW_HOURS,
+    admin = createSupabaseAdminClient()
+    const { data, error } = await admin.rpc("reserve_ai_design_request", {
+      p_user_id: user.id,
       p_model: configuredModel,
     })
-    reservation = Array.isArray(data)
-      ? (data[0] as QuotaReservation | undefined)
-      : undefined
+    reservation = parseReservation(data)
 
     if (error || !reservation) {
       return errorResponse(
@@ -269,9 +301,9 @@ export async function POST(request: Request) {
     )
   }
 
-  const quota = quotaFromReservation(reservation, limit)
+  const quota = reservation.quota
 
-  if (!reservation.request_id) {
+  if (!reservation.requestId) {
     return errorResponse(
       429,
       `Daily limit reached. You can generate up to ${quota.limit} designs per ${quota.windowHours} hours.`,
@@ -281,14 +313,18 @@ export async function POST(request: Request) {
     )
   }
 
-  const requestId = reservation.request_id
+  const requestId = reservation.requestId
   const startedAt = Date.now()
   const completeReservation = async (status: CompletionStatus) => {
     try {
-      const { error } = await supabase.rpc("complete_ai_design_request", {
+      const { error } = await admin.rpc("complete_ai_design_request", {
+        p_user_id: user.id,
         p_request_id: requestId,
         p_status: status,
-        p_latency_ms: Math.max(0, Date.now() - startedAt),
+        p_latency_ms: Math.min(
+          MAX_RECORDED_LATENCY_MS,
+          Math.max(0, Date.now() - startedAt)
+        ),
       })
       return !error
     } catch {

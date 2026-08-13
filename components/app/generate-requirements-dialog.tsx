@@ -52,6 +52,7 @@ export function GenerateRequirementsDialog({ open, onOpenChange, onApply }: Gene
     }
 
     setError(null)
+    setPlan(null)
     try {
       const payload = await generation.mutateAsync({ prompt: normalizedPrompt })
       setPlan(payload.plan)

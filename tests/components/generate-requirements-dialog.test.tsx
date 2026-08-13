@@ -100,4 +100,36 @@ describe("GenerateRequirementsDialog", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument()
     expect(screen.getByLabelText("Environment requirements")).toHaveValue("branch office")
   })
+
+  it("cannot apply an earlier plan after a later prompt fails", async () => {
+    const user = userEvent.setup()
+    const onApply = vi.fn()
+    generate
+      .mockResolvedValueOnce({
+        plan: {
+          title: "Office A",
+          rationale: "Plan for office A.",
+          baseNetwork: "10.10.0.0",
+          baseCidr: 24,
+          subnets: [{ name: "Staff A", hosts: 20 }],
+        },
+      })
+      .mockRejectedValueOnce(new Error("Generation failed. Reference: request-2"))
+
+    render(<GenerateRequirementsDialog open onOpenChange={vi.fn()} onApply={onApply} />)
+    const prompt = screen.getByLabelText("Environment requirements")
+    await user.type(prompt, "office A")
+    await user.click(screen.getByRole("button", { name: "Generate requirements" }))
+    expect(await screen.findByText("Plan for office A.")).toBeInTheDocument()
+
+    await user.clear(prompt)
+    await user.type(prompt, "office B")
+    await user.click(screen.getByRole("button", { name: "Generate requirements" }))
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Reference: request-2")
+    expect(screen.queryByText("Plan for office A.")).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Apply to planner" })).not.toBeInTheDocument()
+    expect(onApply).not.toHaveBeenCalled()
+    expect(prompt).toHaveValue("office B")
+  })
 })
