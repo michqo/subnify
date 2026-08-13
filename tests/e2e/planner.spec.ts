@@ -76,6 +76,45 @@ class PlannerPage {
       expect(box?.width ?? 0).toBeGreaterThanOrEqual(44)
     }
   }
+
+  async assertDefaultMapProportions() {
+    const map = this.page.getByRole("img", {
+      name: "Address allocation map",
+    })
+    const segments = map.locator('[data-slot="allocation-segment"]')
+    await expect(segments).toHaveCount(3)
+
+    const mapBox = await map.boundingBox()
+    expect(mapBox).not.toBeNull()
+    const mapMetrics = await map.evaluate((element) => ({
+      clientLeft: element.clientLeft,
+      clientWidth: element.clientWidth,
+    }))
+    const expected = [
+      { left: 0, width: 0.25 },
+      { left: 0.25, width: 0.125 },
+      { left: 0.375, width: 0.0625 },
+    ]
+
+    for (const [index, proportions] of expected.entries()) {
+      const segmentBox = await segments.nth(index).boundingBox()
+      expect(segmentBox).not.toBeNull()
+      expect((segmentBox?.x ?? 0) - (mapBox?.x ?? 0)).toBeCloseTo(
+        mapMetrics.clientLeft + mapMetrics.clientWidth * proportions.left,
+        0
+      )
+      expect(segmentBox?.width ?? 0).toBeCloseTo(
+        mapMetrics.clientWidth * proportions.width,
+        0
+      )
+    }
+
+    await expect
+      .poll(() =>
+        map.evaluate((element) => element.scrollWidth - element.clientWidth)
+      )
+      .toBeLessThanOrEqual(1)
+  }
 }
 
 for (const viewport of [
@@ -203,15 +242,25 @@ for (const viewport of [
     }
 
     await page.getByRole("tab", { name: "Allocation map" }).click()
-    const mapButtons = [
-      page.getByRole("button", { name: "LAN A /26, 64 addresses" }),
-      page.getByRole("button", { name: "LAN B /27, 32 addresses" }),
-      page.getByRole("button", { name: "LAN C /28, 16 addresses" }),
+    await planner.assertDefaultMapProportions()
+    const mapControls = page.getByRole("group", {
+      name: "Select a subnet from allocation map",
+    })
+    const mapSelectionButtons = [
+      mapControls.getByRole("button", {
+        name: "LAN A /26, 64 addresses",
+      }),
+      mapControls.getByRole("button", {
+        name: "LAN B /27, 32 addresses",
+      }),
+      mapControls.getByRole("button", {
+        name: "LAN C /28, 16 addresses",
+      }),
     ]
     if (viewport.name === "mobile") {
-      await planner.assertTargetsAtLeast44Pixels(mapButtons)
+      await planner.assertTargetsAtLeast44Pixels(mapSelectionButtons)
     }
-    await mapButtons[1].click()
+    await mapSelectionButtons[1].click()
     await page.getByRole("tab", { name: "Hierarchy" }).click()
     const selectedHierarchy = page.getByRole("button", {
       name: /LAN B 192\.168\.1\.64\/27 selected/,

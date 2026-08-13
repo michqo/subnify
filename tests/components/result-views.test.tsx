@@ -117,6 +117,60 @@ describe("synchronized result views", () => {
     expect(onToggle).toHaveBeenCalledWith(87)
   })
 
+  it("keeps dense segments proportional and exposes distinct touch controls", async () => {
+    const calculation = calculateVlsm({
+      baseNetwork: "192.168.1.0",
+      baseCidr: 24,
+      subnets: Array.from({ length: 16 }, (_, index) => ({
+        id: index + 1,
+        name: `Dense ${index + 1}`,
+        hosts: 1,
+      })),
+    })
+    if (!calculation.ok) throw new Error("fixture must be valid")
+    const user = userEvent.setup()
+    const onToggle = vi.fn()
+
+    const { container } = render(
+      <AllocationMap
+        calculation={calculation}
+        selectedSubnet={null}
+        onToggleSubnet={onToggle}
+      />
+    )
+
+    const segments = Array.from(
+      container.querySelectorAll<HTMLElement>(
+        '[data-slot="allocation-segment"]'
+      )
+    )
+    expect(segments).toHaveLength(16)
+    expect(segments[0]).toHaveStyle({ left: "0%", width: "1.5625%" })
+    expect(segments[1]).toHaveStyle({
+      left: "1.5625%",
+      width: "1.5625%",
+    })
+
+    expect(
+      screen.getByRole("group", {
+        name: "Select a subnet from allocation map",
+      })
+    ).toBeInTheDocument()
+    const controls = screen.getAllByRole("button", {
+      name: /Dense \d+ \/30, 4 addresses/,
+    })
+    expect(controls).toHaveLength(16)
+    expect(new Set(controls)).toHaveLength(16)
+    for (const control of controls) {
+      expect(control).toHaveClass("min-h-11", "min-w-11")
+    }
+
+    await user.click(controls[0])
+    await user.click(controls[15])
+    expect(onToggle).toHaveBeenNthCalledWith(1, 1)
+    expect(onToggle).toHaveBeenNthCalledWith(2, 16)
+  })
+
   it("uses returned parent and utilization counts in map and hierarchy", () => {
     const calculation = {
       ...validCalculation(),
