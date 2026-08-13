@@ -66,12 +66,12 @@ export function CalculatorResultsSection({
 
   return (
     <section
-      aria-label="Committed VLSM results"
+      aria-label="VLSM results"
       className="rounded-md border border-border bg-card/80"
     >
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
         <div>
-          <h2 className="font-mono text-sm font-semibold">Committed results</h2>
+          <h2 className="font-mono text-sm font-semibold">Results</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {calculation === null
               ? "No committed calculation"
@@ -97,7 +97,7 @@ export function CalculatorResultsSection({
             ) : (
               <Copy className="size-4" />
             )}
-            {copied ? "Copied" : "Copy"}
+            {copied ? "Copied" : "Copy all"}
           </Button>
           <Button
             variant="outline"
@@ -106,7 +106,7 @@ export function CalculatorResultsSection({
             onClick={onExportPdf}
             disabled={exporting || outputsDisabled}
           >
-            <Download className="size-4" /> {exporting ? "Exporting" : "PDF"}
+            <Download className="size-4" /> {exporting ? "Exporting" : "Export PDF"}
           </Button>
         </div>
       </div>
@@ -131,7 +131,7 @@ export function CalculatorResultsSection({
         <TabsContent value="table" className="mt-0">
           {results.length === 0 ? (
             <p className="border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-              Run a valid calculation to commit results.
+              Calculate a valid plan to see results.
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -206,7 +206,7 @@ export function CalculatorResultsSection({
         <TabsContent value="visualizer" className="mt-0">
           {calculation === null ? (
             <p className="p-8 text-center text-sm text-muted-foreground">
-              Calculate a plan to view allocation.
+              Calculate a valid plan to see results.
             </p>
           ) : (
             <AllocationMap
@@ -220,7 +220,7 @@ export function CalculatorResultsSection({
         <TabsContent value="hierarchy" className="mt-0">
           {calculation === null ? (
             <p className="p-8 text-center text-sm text-muted-foreground">
-              Calculate a plan to view hierarchy.
+              Calculate a valid plan to see results.
             </p>
           ) : (
             <SubnetHierarchy

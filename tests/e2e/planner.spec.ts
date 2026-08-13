@@ -24,11 +24,9 @@ class PlannerPage {
     this.baseNetwork = page.getByLabel("Parent network")
     this.baseCidr = page.getByLabel("Prefix")
     this.calculateButton = page.getByRole("button", { name: "Calculate VLSM" })
-    this.copyButton = page.getByRole("button", { name: /^(Copy|Copied)$/ })
-    this.pdfButton = page.getByRole("button", { name: /^(PDF|Exporting)$/ })
-    this.results = page.getByRole("region", {
-      name: "Committed VLSM results",
-    })
+    this.copyButton = page.getByRole("button", { name: /^(Copy all|Copied)$/ })
+    this.pdfButton = page.getByRole("button", { name: /^(Export PDF|Exporting)$/ })
+    this.results = page.getByRole("region", { name: "VLSM results" })
   }
 
   async goto() {
@@ -141,7 +139,9 @@ for (const viewport of [
     const alert = planner.editor.getByRole("alert")
     await expect(alert).toContainText(/do not fit/i)
     await expect(alert).toBeFocused()
-    await expect(page.getByText(/run a valid calculation/i)).toBeVisible()
+    await expect(
+      page.getByText("Calculate a valid plan to see results.")
+    ).toBeVisible()
     await expect(
       page.getByRole("row").filter({ hasText: "LAN A" })
     ).toHaveCount(0)
@@ -358,7 +358,7 @@ test("calculates an edited plan and keeps selection synchronized across views", 
   await planner.calculate()
 
   await expect(
-    page.getByRole("heading", { name: "Committed results" })
+    page.getByRole("heading", { name: "Results" })
   ).toBeVisible()
   await expect(page.getByText("2 subnets · 192.168.10.0/24")).toBeVisible()
   const engineeringRow = page

@@ -22,7 +22,7 @@ export function LiveIntelligence({ diagnostics }: { diagnostics: PlanDiagnostics
   }
 
   return (
-    <aside aria-label="Plan intelligence" className="rounded-md border border-border bg-card/80 p-4 lg:sticky lg:top-20 lg:self-start">
+    <aside aria-label="Capacity" className="rounded-md border border-border bg-card/80 p-4 lg:sticky lg:top-20 lg:self-start">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           {diagnostics.isValid ? (
@@ -30,7 +30,7 @@ export function LiveIntelligence({ diagnostics }: { diagnostics: PlanDiagnostics
           ) : (
             <AlertTriangle className="size-4 text-destructive" />
           )}
-          <h2 className="font-mono text-sm font-semibold">Live checks</h2>
+          <h2 className="font-mono text-sm font-semibold">Capacity</h2>
         </div>
         <span className="font-mono text-xs text-muted-foreground">{diagnostics.utilizationPercent}% used</span>
       </div>
@@ -49,7 +49,9 @@ export function LiveIntelligence({ diagnostics }: { diagnostics: PlanDiagnostics
           ))}
         </div>
       ) : (
-        <p className="mt-4 text-sm text-muted-foreground">Inputs fit inside the parent network with no overlap.</p>
+        <p className="mt-4 text-sm text-muted-foreground">
+          Fits · {diagnostics.remainingAddresses.toLocaleString()} addresses free
+        </p>
       )}
 
       {diagnostics.allocations.length > 0 ? (
@@ -62,7 +64,7 @@ export function LiveIntelligence({ diagnostics }: { diagnostics: PlanDiagnostics
             aria-controls="allocation-explanations"
             onClick={() => setGuidance(!expanded)}
           >
-            {expanded ? "Hide explanations" : "Show explanations"}
+            {expanded ? "Hide allocation notes" : "Allocation notes"}
             {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
           </Button>
           {expanded ? (

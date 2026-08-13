@@ -290,6 +290,30 @@ describe("PlannerWorkspace", () => {
     expect(screen.getByText(/results outdated/i)).toBeInTheDocument()
   })
 
+  it("presents capacity as a direct fit status", () => {
+    render(
+      <PlannerWorkspace
+        diagnostics={validDiagnostics}
+        resultsAreStale={false}
+        planName="Branch office"
+        onPlanNameChange={vi.fn()}
+        planBaseNetwork="192.168.10.0"
+        planBaseCidr="24"
+        requirementCount={1}
+        hasMeaningfulEdits={false}
+        onApplyTemplate={vi.fn()}
+        editor={<div>Editor</div>}
+        resultsContent={<div>Results</div>}
+      />
+    )
+
+    expect(screen.getByRole("heading", { name: "Capacity" })).toBeInTheDocument()
+    expect(screen.getByText("Fits · 192 addresses free")).toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "Plan summary" })).toBeInTheDocument()
+    expect(screen.getByText("Used")).toBeInTheDocument()
+    expect(screen.queryByText("Address summary")).not.toBeInTheDocument()
+  })
+
   it("remembers collapsed contextual guidance", async () => {
     const user = userEvent.setup()
     render(
@@ -309,9 +333,9 @@ describe("PlannerWorkspace", () => {
     )
 
     expect(screen.getByText(/62 hosts plus network/i)).toBeInTheDocument()
-    await user.click(screen.getByRole("button", { name: /hide explanations/i }))
+    await user.click(screen.getByRole("button", { name: /hide allocation notes/i }))
     expect(screen.queryByText(/62 hosts plus network/i)).not.toBeInTheDocument()
-    expect(screen.getByRole("button", { name: /show explanations/i })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: /allocation notes/i })).toHaveAttribute(
       "aria-expanded",
       "false"
     )

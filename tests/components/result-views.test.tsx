@@ -65,8 +65,10 @@ describe("synchronized result views", () => {
       />
     )
 
-    expect(screen.getByRole("button", { name: "Copy" })).toBeDisabled()
-    expect(screen.getByRole("button", { name: "PDF" })).toBeDisabled()
+    expect(screen.getByRole("heading", { name: "Results" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Copy all" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Export PDF" })).toBeDisabled()
+    expect(screen.getByText("Calculate a valid plan to see results.")).toBeInTheDocument()
 
     rerender(
       <CalculatorResultsSection
@@ -83,8 +85,8 @@ describe("synchronized result views", () => {
       />
     )
 
-    expect(screen.getByRole("button", { name: "Copy" })).toBeDisabled()
-    expect(screen.getByRole("button", { name: "PDF" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Copy all" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Export PDF" })).toBeDisabled()
   })
 
   it("uses returned requirement IDs after largest-first reordering", async () => {
@@ -220,8 +222,8 @@ describe("synchronized result views", () => {
       />
     )
 
-    expect(screen.getByRole("button", { name: "Copy" })).toHaveClass("min-h-11")
-    expect(screen.getByRole("button", { name: "PDF" })).toHaveClass("min-h-11")
+    expect(screen.getByRole("button", { name: "Copy all" })).toHaveClass("min-h-11")
+    expect(screen.getByRole("button", { name: "Export PDF" })).toHaveClass("min-h-11")
     expect(screen.getByRole("tab", { name: "Table" })).toHaveClass("min-h-11")
     expect(screen.getByRole("button", { name: "Engineering" })).toHaveAttribute(
       "aria-pressed",
