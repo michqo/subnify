@@ -307,7 +307,9 @@ describe("PlannerWorkspace", () => {
       />
     )
 
-    expect(screen.getByRole("heading", { name: "Capacity" })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "Capacity" })).not.toHaveClass(
+      "font-mono"
+    )
     expect(screen.getByText("Fits · 192 addresses free")).toBeInTheDocument()
     expect(screen.getByRole("region", { name: "Plan summary" })).toBeInTheDocument()
     expect(screen.getByText("Used")).toBeInTheDocument()

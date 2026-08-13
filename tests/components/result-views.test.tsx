@@ -65,10 +65,14 @@ describe("synchronized result views", () => {
       />
     )
 
-    expect(screen.getByRole("heading", { name: "Results" })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "Results" })).not.toHaveClass(
+      "font-mono"
+    )
     expect(screen.getByRole("button", { name: "Copy all" })).toBeDisabled()
     expect(screen.getByRole("button", { name: "Export PDF" })).toBeDisabled()
+    expect(screen.getByText("No results")).toBeInTheDocument()
     expect(screen.getByText("Calculate a valid plan to see results.")).toBeInTheDocument()
+    expect(screen.queryByText(/committed/i)).not.toBeInTheDocument()
 
     rerender(
       <CalculatorResultsSection

@@ -30,7 +30,7 @@ export function LiveIntelligence({ diagnostics }: { diagnostics: PlanDiagnostics
           ) : (
             <AlertTriangle className="size-4 text-destructive" />
           )}
-          <h2 className="font-mono text-sm font-semibold">Capacity</h2>
+          <h2 className="text-sm font-semibold">Capacity</h2>
         </div>
         <span className="font-mono text-xs text-muted-foreground">{diagnostics.utilizationPercent}% used</span>
       </div>
