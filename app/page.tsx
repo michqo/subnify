@@ -7,12 +7,12 @@ import { Footer } from "@/components/home/footer"
 export const metadata: Metadata = {
   title: "miqal / subnify",
   description:
-    "Design and visualize subnet layouts in seconds with VLSM planning, overlap-safe allocation, and clear address space visibility.",
+    "Plan IPv4 subnets with VLSM, live capacity checks, saved history, and export.",
 }
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen font-mono">
+    <div className="min-h-screen">
       <main>
         <HeroSection />
         <ProductProof />

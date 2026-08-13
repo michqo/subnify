@@ -2,21 +2,46 @@ import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 
 import HelpPage from "@/app/app/help/page"
-import HomePage from "@/app/page"
+import HomePage, { metadata as homeMetadata } from "@/app/page"
 
 describe("Subnify landing", () => {
-  it("leads with a technical product promise and real network proof", () => {
+  it("leads with direct network language and real allocation data", () => {
     render(<HomePage />)
 
-    expect(screen.getByRole("heading", { level: 1, name: "Address space, made legible." })).toBeInTheDocument()
-    expect(screen.getByRole("link", { name: "Open planner" })).toHaveAttribute("href", "/app")
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: "Every address accounted for.",
+      })
+    ).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Plan a network" })).toHaveAttribute(
+      "href",
+      "/app"
+    )
+    expect(screen.getByRole("link", { name: "See an example" })).toHaveAttribute(
+      "href",
+      "#how-it-works"
+    )
+    expect(
+      screen.getByRole("heading", {
+        level: 2,
+        name: "Host counts in. CIDR blocks out.",
+      })
+    ).toBeInTheDocument()
     expect(screen.getByText("192.168.10.0/24")).toBeInTheDocument()
-    expect(screen.getByText(/62 hosts plus network and broadcast/i)).toBeInTheDocument()
-    expect(screen.getAllByText("128", { selector: "span" })).toHaveLength(2)
-    expect(screen.getByText("224 free")).toBeInTheDocument()
-    expect(screen.getByText("512 addresses")).toBeInTheDocument()
-    expect(screen.queryByText("Alpha")).not.toBeInTheDocument()
-    expect(screen.queryByText(/in seconds/i)).not.toBeInTheDocument()
+    expect(screen.getByText("Parent range and required hosts.")).toBeInTheDocument()
+    expect(screen.getByText("Smallest fitting blocks, largest first.")).toBeInTheDocument()
+    expect(screen.getByText("Copy, export, or save.")).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "Start with 192.168.1.0/24." })).toBeInTheDocument()
+    expect(screen.queryByText("IPv4 planning workspace")).not.toBeInTheDocument()
+    expect(screen.queryByText("Address space, made legible.")).not.toBeInTheDocument()
+    expect(screen.queryByText("One continuous workflow")).not.toBeInTheDocument()
+  })
+
+  it("uses concrete landing metadata", () => {
+    expect(homeMetadata.description).toBe(
+      "Plan IPv4 subnets with VLSM, live capacity checks, saved history, and export."
+    )
   })
 })
 
