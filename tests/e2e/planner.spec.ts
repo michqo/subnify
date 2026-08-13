@@ -1,5 +1,13 @@
 import { expect, test, type Locator, type Page } from "@playwright/test"
 
+function captureConsoleErrors(page: Page) {
+  const errors: string[] = []
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text())
+  })
+  return errors
+}
+
 class PlannerPage {
   readonly page: Page
   readonly editor: Locator
@@ -59,6 +67,7 @@ class PlannerPage {
 test("rejects a /30 plan, clears stale output, and keeps exports disabled", async ({
   page,
 }) => {
+  const consoleErrors = captureConsoleErrors(page)
   const planner = new PlannerPage(page)
   await planner.goto()
   await planner.calculate()
@@ -80,6 +89,8 @@ test("rejects a /30 plan, clears stale output, and keeps exports disabled", asyn
   )
   await expect(planner.copyButton).toBeDisabled()
   await expect(planner.pdfButton).toBeDisabled()
+  await planner.assertNoHorizontalOverflow()
+  expect(consoleErrors).toEqual([])
 })
 
 test("applies a canonical suggestion and remains usable at narrow widths", async ({
@@ -87,6 +98,7 @@ test("applies a canonical suggestion and remains usable at narrow widths", async
 }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.emulateMedia({ reducedMotion: "reduce" })
+  const consoleErrors = captureConsoleErrors(page)
   const planner = new PlannerPage(page)
   await planner.goto()
 
@@ -131,16 +143,14 @@ test("applies a canonical suggestion and remains usable at narrow widths", async
       parseFloat(getComputedStyle(element).transitionDuration)
     )
   expect(calculateTransitionDurationSeconds).toBeLessThanOrEqual(0.00001)
+  expect(consoleErrors).toEqual([])
 })
 
 test("commits one contract to table, map, hierarchy, clipboard, and PDF", async ({
   page,
   context,
 }) => {
-  const consoleErrors: string[] = []
-  page.on("console", (message) => {
-    if (message.type() === "error") consoleErrors.push(message.text())
-  })
+  const consoleErrors = captureConsoleErrors(page)
   await context.grantPermissions(["clipboard-read", "clipboard-write"])
   const planner = new PlannerPage(page)
   await planner.goto()
@@ -175,12 +185,81 @@ test("commits one contract to table, map, hierarchy, clipboard, and PDF", async 
   await planner.copyButton.click()
   await expect
     .poll(() => page.evaluate(() => navigator.clipboard.readText()))
-    .toContain("LAN B: 192.168.1.64/27")
+    .toBe(
+      [
+        "LAN A: 192.168.1.0/26 (Mask: 255.255.255.192, Range: 192.168.1.1 - 192.168.1.62)",
+        "LAN B: 192.168.1.64/27 (Mask: 255.255.255.224, Range: 192.168.1.65 - 192.168.1.94)",
+        "LAN C: 192.168.1.96/28 (Mask: 255.255.255.240, Range: 192.168.1.97 - 192.168.1.110)",
+      ].join("\n")
+    )
 
   const downloadPromise = page.waitForEvent("download")
   await planner.pdfButton.click()
   const download = await downloadPromise
   expect(download.suggestedFilename()).toMatch(/^subnify-plan-\d{8}\.pdf$/)
   expect(await download.failure()).toBeNull()
+  await planner.assertNoHorizontalOverflow()
+  expect(consoleErrors).toEqual([])
+})
+
+test("calculates an edited plan and keeps selection synchronized across views", async ({
+  page,
+}) => {
+  const consoleErrors = captureConsoleErrors(page)
+  const planner = new PlannerPage(page)
+  await planner.goto()
+
+  await planner.baseNetwork.fill("192.168.10.0")
+  await planner.baseCidr.fill("24")
+  await page.getByLabel("Subnet 1 name").fill("Engineering")
+  await page.getByLabel("Subnet 1 required hosts").fill("62")
+  await page.getByLabel("Subnet 2 name").fill("Guest Wi-Fi")
+  await page.getByLabel("Subnet 2 required hosts").fill("40")
+  await page.getByRole("button", { name: "Remove LAN C" }).click()
+
+  await planner.calculate()
+
+  await expect(
+    page.getByRole("heading", { name: "Committed results" })
+  ).toBeVisible()
+  await expect(page.getByText("2 subnets · 192.168.10.0/24")).toBeVisible()
+  const engineeringRow = page
+    .getByRole("row")
+    .filter({ hasText: "Engineering" })
+  await expect(engineeringRow).toContainText("192.168.10.0")
+  await expect(engineeringRow).toContainText("/26")
+
+  await page.getByRole("tab", { name: "Allocation map" }).click()
+  const engineeringBlock = page.getByRole("button", {
+    name: "Engineering /26, 64 addresses",
+  })
+  await engineeringBlock.click()
+  await expect(engineeringBlock).toHaveAttribute("aria-pressed", "true")
+
+  await page.getByRole("tab", { name: "Table" }).click()
+  await expect(engineeringRow).toHaveAttribute("aria-selected", "true")
+  await expect(planner.pdfButton).toBeEnabled()
+  await planner.assertNoHorizontalOverflow()
+  expect(consoleErrors).toEqual([])
+})
+
+test("planner stays contained and exposes product navigation on mobile", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  const consoleErrors = captureConsoleErrors(page)
+  const planner = new PlannerPage(page)
+  await planner.goto()
+
+  await planner.assertNoHorizontalOverflow()
+  await page.getByRole("button", { name: "Product menu" }).click()
+  const mobileNavigation = page.getByRole("navigation", {
+    name: "Mobile product navigation",
+  })
+  await expect(mobileNavigation).toBeVisible()
+  await expect(
+    mobileNavigation.getByRole("link", { name: "History" })
+  ).toBeVisible()
+  await planner.assertNoHorizontalOverflow()
   expect(consoleErrors).toEqual([])
 })
