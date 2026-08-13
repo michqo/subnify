@@ -1,43 +1,186 @@
-import { expect, test } from "@playwright/test"
+import { expect, test, type Locator, type Page } from "@playwright/test"
 
-test("calculates a plan and keeps selection synchronized across views", async ({ page }) => {
-  await page.goto("/app")
+class PlannerPage {
+  readonly page: Page
+  readonly editor: Locator
+  readonly baseNetwork: Locator
+  readonly baseCidr: Locator
+  readonly calculateButton: Locator
+  readonly copyButton: Locator
+  readonly pdfButton: Locator
 
-  await page.getByLabel("Base Network").fill("192.168.10.0")
-  await page.getByLabel("CIDR Notation").fill("24")
+  constructor(page: Page) {
+    this.page = page
+    this.editor = page.getByRole("region", { name: "Plan editor" })
+    this.baseNetwork = page.getByLabel("Base Network")
+    this.baseCidr = page.getByLabel("CIDR Notation")
+    this.calculateButton = page.getByRole("button", { name: "Calculate VLSM" })
+    this.copyButton = page.getByRole("button", { name: /^(Copy|Copied)$/ })
+    this.pdfButton = page.getByRole("button", { name: /^(PDF|Exporting)$/ })
+  }
 
-  const names = page.getByPlaceholder("Subnet name")
-  const hosts = page.getByPlaceholder("Hosts")
-  await names.nth(0).fill("Engineering")
-  await hosts.nth(0).fill("62")
-  await names.nth(1).fill("Guest Wi-Fi")
-  await hosts.nth(1).fill("40")
-  await page.getByRole("button", { name: "Remove LAN C" }).click()
+  async goto() {
+    await this.page.goto("/app")
+  }
 
-  await page.getByRole("button", { name: "Calculate VLSM" }).click()
+  async calculate() {
+    await this.calculateButton.click()
+  }
 
-  await expect(page.getByRole("heading", { name: "Committed results" })).toBeVisible()
-  await expect(page.getByText("2 subnets · 192.168.10.0/24")).toBeVisible()
-  await expect(page.getByRole("row").filter({ hasText: "Engineering" })).toContainText("/26")
+  async assertNoHorizontalOverflow() {
+    await expect
+      .poll(() =>
+        this.page.evaluate(
+          () =>
+            document.documentElement.scrollWidth -
+            document.documentElement.clientWidth
+        )
+      )
+      .toBeLessThanOrEqual(1)
+  }
 
-  await page.getByRole("tab", { name: "Allocation map" }).click()
-  const engineeringBlock = page.getByRole("button", { name: "Engineering /26, 64 addresses" })
-  await engineeringBlock.click()
-  await expect(engineeringBlock).toHaveAttribute("aria-pressed", "true")
+  async assertEditorTargetsAtLeast44Pixels() {
+    const targets = [
+      ...(await this.editor.getByRole("button").all()),
+      ...(await this.editor.getByRole("textbox").all()),
+      ...(await this.editor.getByRole("spinbutton").all()),
+    ]
 
-  await page.getByRole("tab", { name: "Table" }).click()
-  await expect(page.getByRole("row").filter({ hasText: "Engineering" })).toHaveAttribute("aria-selected", "true")
-  await expect(page.getByRole("button", { name: "PDF" })).toBeEnabled()
+    expect(targets.length).toBeGreaterThan(0)
+    for (const target of targets) {
+      await expect(target).toBeVisible()
+      const box = await target.boundingBox()
+      expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)
+      expect(box?.width ?? 0).toBeGreaterThanOrEqual(44)
+    }
+  }
+}
+
+test("rejects a /30 plan, clears stale output, and keeps exports disabled", async ({
+  page,
+}) => {
+  const planner = new PlannerPage(page)
+  await planner.goto()
+  await planner.calculate()
+
+  await expect(
+    page.getByRole("heading", { name: "Committed results" })
+  ).toBeVisible()
+  await expect(page.getByRole("row").filter({ hasText: "LAN A" })).toBeVisible()
+
+  await planner.baseCidr.fill("30")
+  await planner.calculate()
+
+  const alert = planner.editor.getByRole("alert")
+  await expect(alert).toContainText(/do not fit/i)
+  await expect(alert).toBeFocused()
+  await expect(page.getByText(/run a valid calculation/i)).toBeVisible()
+  await expect(page.getByRole("row").filter({ hasText: "LAN A" })).toHaveCount(
+    0
+  )
+  await expect(planner.copyButton).toBeDisabled()
+  await expect(planner.pdfButton).toBeDisabled()
 })
 
-test("planner stays contained and exposes navigation on mobile", async ({ page }) => {
+test("applies a canonical suggestion and remains usable at narrow widths", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto("/app")
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  const planner = new PlannerPage(page)
+  await planner.goto()
 
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
-  expect(overflow).toBeLessThanOrEqual(1)
+  await planner.baseNetwork.fill("192.168.1.5")
+  await planner.calculate()
+  const canonicalSuggestion = page.getByRole("button", {
+    name: "Use 192.168.1.0",
+  })
+  await canonicalSuggestion.click()
 
-  await page.getByRole("button", { name: "Product menu" }).click()
-  await expect(page.getByRole("navigation", { name: "Mobile product navigation" })).toBeVisible()
-  await expect(page.getByRole("navigation", { name: "Mobile product navigation" }).getByRole("link", { name: "History" })).toBeVisible()
+  await expect(planner.baseNetwork).toHaveValue("192.168.1.0")
+  await planner.assertNoHorizontalOverflow()
+  await planner.assertEditorTargetsAtLeast44Pixels()
+
+  await planner.baseNetwork.focus()
+  await page.keyboard.press("Tab")
+  await expect(canonicalSuggestion).toBeFocused()
+  const suggestionFocusStyle = await canonicalSuggestion.evaluate(
+    (element) => ({
+      boxShadow: getComputedStyle(element).boxShadow,
+      outlineStyle: getComputedStyle(element).outlineStyle,
+    })
+  )
+  expect(
+    suggestionFocusStyle.boxShadow !== "none" ||
+      suggestionFocusStyle.outlineStyle !== "none"
+  ).toBe(true)
+  await page.keyboard.press("Tab")
+  await expect(planner.baseCidr).toBeFocused()
+
+  await page.setViewportSize({ width: 320, height: 844 })
+  const firstSubnetName = page.getByLabel("Subnet 1 name")
+  const firstSubnetHosts = page.getByLabel("Subnet 1 required hosts")
+  await firstSubnetName.fill("Editable at 320")
+  await firstSubnetHosts.fill("20")
+  await expect(firstSubnetName).toHaveValue("Editable at 320")
+  await expect(firstSubnetHosts).toHaveValue("20")
+  await planner.assertNoHorizontalOverflow()
+
+  const calculateTransitionDurationSeconds =
+    await planner.calculateButton.evaluate((element) =>
+      parseFloat(getComputedStyle(element).transitionDuration)
+    )
+  expect(calculateTransitionDurationSeconds).toBeLessThanOrEqual(0.00001)
+})
+
+test("commits one contract to table, map, hierarchy, clipboard, and PDF", async ({
+  page,
+  context,
+}) => {
+  const consoleErrors: string[] = []
+  page.on("console", (message) => {
+    if (message.type() === "error") consoleErrors.push(message.text())
+  })
+  await context.grantPermissions(["clipboard-read", "clipboard-write"])
+  const planner = new PlannerPage(page)
+  await planner.goto()
+  await planner.calculate()
+
+  const lanA = page.getByRole("row").filter({ hasText: "LAN A" })
+  const lanB = page.getByRole("row").filter({ hasText: "LAN B" })
+  const lanC = page.getByRole("row").filter({ hasText: "LAN C" })
+  await expect(lanA).toContainText("192.168.1.0")
+  await expect(lanA).toContainText("/26")
+  await expect(lanB).toContainText("192.168.1.64")
+  await expect(lanB).toContainText("/27")
+  await expect(lanC).toContainText("192.168.1.96")
+  await expect(lanC).toContainText("/28")
+
+  await page.getByRole("tab", { name: "Allocation map" }).click()
+  await page.getByRole("button", { name: "LAN B /27, 32 addresses" }).click()
+  await page.getByRole("tab", { name: "Hierarchy" }).click()
+  await expect(
+    page.getByRole("button", {
+      name: /LAN B 192\.168\.1\.64\/27 selected/,
+    })
+  ).toHaveAttribute("aria-pressed", "true")
+  await page.getByRole("tab", { name: "Table" }).click()
+  await expect(lanB).toHaveAttribute("aria-selected", "true")
+
+  await page.getByRole("button", { name: "Copy 255.255.255.192" }).click()
+  await expect
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toBe("255.255.255.192")
+
+  await planner.copyButton.click()
+  await expect
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toContain("LAN B: 192.168.1.64/27")
+
+  const downloadPromise = page.waitForEvent("download")
+  await planner.pdfButton.click()
+  const download = await downloadPromise
+  expect(download.suggestedFilename()).toMatch(/^subnify-plan-\d{8}\.pdf$/)
+  expect(await download.failure()).toBeNull()
+  expect(consoleErrors).toEqual([])
 })

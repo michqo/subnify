@@ -35,7 +35,7 @@ export function useCalculatorPlanForm() {
   const calculatorForm = useForm({
     defaultValues: defaultFormValues,
   })
-  const formValues = calculatorForm.state.values
+  const formValues = useStore(calculatorForm.store, (state) => state.values)
   const subnets = useStore(calculatorForm.store, (state) => state.values.subnets)
 
   const keepSourceTypeConsistent = useCallback(() => {
