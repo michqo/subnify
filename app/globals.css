@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "@miqal/theme/theme.css";
-@import "shadcn/tailwind.css";
+@import "./tailwind-variants.css";
 
 :root {
   --font-inter: var(--font-geist-sans);

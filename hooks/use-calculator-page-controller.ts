@@ -123,9 +123,15 @@ export function useCalculatorPageController({
   )
 
   useEffect(() => {
-    if (calculation !== null && committedPlanFingerprint === null) {
-      setCommittedPlanFingerprint(currentPlanFingerprint)
+    if (calculation === null || committedPlanFingerprint !== null) {
+      return
     }
+
+    const timeoutId = window.setTimeout(() => {
+      setCommittedPlanFingerprint(currentPlanFingerprint)
+    }, 0)
+
+    return () => window.clearTimeout(timeoutId)
   }, [calculation, committedPlanFingerprint, currentPlanFingerprint])
 
   const resultsAreStale =
