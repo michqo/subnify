@@ -152,6 +152,48 @@ for (const viewport of [
   })
 }
 
+for (const viewport of [
+  { name: "desktop", width: 1280, height: 720 },
+  { name: "mobile", width: 390, height: 844 },
+]) {
+  test(`renames current plan inline on ${viewport.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height })
+    const consoleErrors = captureConsoleErrors(page)
+    const planner = new PlannerPage(page)
+    await planner.goto()
+
+    await page
+      .getByRole("button", { name: "Rename plan: Untitled plan" })
+      .click()
+    const input = page.getByRole("textbox", { name: "Plan name" })
+    await expect(input).toBeFocused()
+    await expect(input).toHaveAttribute("maxlength", "80")
+    await input.fill("Branch office")
+    await input.press("Enter")
+
+    await expect(
+      page.getByRole("button", { name: "Rename plan: Branch office" })
+    ).toBeVisible()
+
+    await page
+      .getByRole("button", { name: "Rename plan: Branch office" })
+      .click()
+    await input.fill("Temporary")
+    await input.press("Escape")
+
+    await expect(
+      page.getByRole("button", { name: "Rename plan: Branch office" })
+    ).toBeVisible()
+    const renameButton = page.getByRole("button", {
+      name: "Rename plan: Branch office",
+    })
+    const box = await renameButton.boundingBox()
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)
+    await planner.assertNoHorizontalOverflow()
+    expect(consoleErrors).toEqual([])
+  })
+}
+
 test("applies a canonical suggestion and remains usable at narrow widths", async ({
   page,
 }) => {

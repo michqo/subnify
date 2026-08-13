@@ -24,6 +24,7 @@ export function PlannerWorkspace({
   diagnostics,
   resultsAreStale,
   planName,
+  onPlanNameChange,
   hasMeaningfulEdits,
   onApplyTemplate,
   onApplyRequirements = onApplyTemplate,
@@ -32,7 +33,13 @@ export function PlannerWorkspace({
 }: PlannerWorkspaceProps) {
   return (
     <div className="mx-auto w-full max-w-[1600px] space-y-5 px-4 py-5 lg:px-6 lg:py-6">
-      <PlannerToolbar planName={planName} hasMeaningfulEdits={hasMeaningfulEdits} onApplyTemplate={onApplyTemplate} onApplyRequirements={onApplyRequirements} />
+      <PlannerToolbar
+        planName={planName}
+        onPlanNameChange={onPlanNameChange}
+        hasMeaningfulEdits={hasMeaningfulEdits}
+        onApplyTemplate={onApplyTemplate}
+        onApplyRequirements={onApplyRequirements}
+      />
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,.65fr)]">
         <section aria-label="Plan editor" className="min-w-0 rounded-md border border-border bg-card/80 p-4 sm:p-5">{editor}</section>
         <LiveIntelligence diagnostics={diagnostics} />

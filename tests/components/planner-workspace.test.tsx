@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { useState } from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { PlannerWorkspace } from "@/components/app/planner-workspace"
@@ -21,8 +22,119 @@ const validDiagnostics = diagnosePlan({
   subnets: [{ id: 1, name: "Engineering", hosts: 62 }],
 })
 
+function RenameHarness({ initialName = "" }: { initialName?: string }) {
+  const [planName, setPlanName] = useState(initialName)
+
+  return (
+    <PlannerWorkspace
+      diagnostics={validDiagnostics}
+      resultsAreStale={false}
+      planName={planName}
+      onPlanNameChange={setPlanName}
+      hasMeaningfulEdits={false}
+      onApplyTemplate={vi.fn()}
+      editor={<div>Editor</div>}
+      resultsContent={<div>Results</div>}
+    />
+  )
+}
+
 describe("PlannerWorkspace", () => {
   beforeEach(() => localStorage.clear())
+
+  it("renames an untitled plan inline with the keyboard", async () => {
+    const user = userEvent.setup()
+    render(<RenameHarness />)
+
+    await user.click(
+      screen.getByRole("button", { name: "Rename plan: Untitled plan" })
+    )
+
+    const input = screen.getByRole("textbox", { name: "Plan name" })
+    expect(input).toHaveFocus()
+    expect(input).toHaveAttribute("maxlength", "80")
+
+    await user.type(input, "Branch office{Enter}")
+
+    expect(
+      screen.getByRole("button", { name: "Rename plan: Branch office" })
+    ).toBeInTheDocument()
+  })
+
+  it("commits a blank name on blur as Untitled plan", async () => {
+    const user = userEvent.setup()
+    render(<RenameHarness initialName="Branch office" />)
+
+    await user.click(
+      screen.getByRole("button", { name: "Rename plan: Branch office" })
+    )
+    const input = screen.getByRole("textbox", { name: "Plan name" })
+    await user.clear(input)
+    await user.type(input, "   ")
+    await user.tab()
+
+    expect(
+      screen.getByRole("button", { name: "Rename plan: Untitled plan" })
+    ).toBeInTheDocument()
+  })
+
+  it("restores the original name when Escape cancels editing", async () => {
+    const user = userEvent.setup()
+    const onPlanNameChange = vi.fn()
+
+    render(
+      <PlannerWorkspace
+        diagnostics={validDiagnostics}
+        resultsAreStale={false}
+        planName="Branch office"
+        onPlanNameChange={onPlanNameChange}
+        hasMeaningfulEdits={false}
+        onApplyTemplate={vi.fn()}
+        editor={<div>Editor</div>}
+        resultsContent={<div>Results</div>}
+      />
+    )
+
+    await user.click(
+      screen.getByRole("button", { name: "Rename plan: Branch office" })
+    )
+    const input = screen.getByRole("textbox", { name: "Plan name" })
+    await user.clear(input)
+    await user.type(input, "Temporary{Escape}")
+
+    expect(
+      screen.getByRole("button", { name: "Rename plan: Branch office" })
+    ).toBeInTheDocument()
+    expect(onPlanNameChange).not.toHaveBeenCalled()
+  })
+
+  it("commits one rename callback when Enter triggers blur", async () => {
+    const user = userEvent.setup()
+    const onPlanNameChange = vi.fn()
+
+    render(
+      <PlannerWorkspace
+        diagnostics={validDiagnostics}
+        resultsAreStale={false}
+        planName="Branch office"
+        onPlanNameChange={onPlanNameChange}
+        hasMeaningfulEdits={false}
+        onApplyTemplate={vi.fn()}
+        editor={<div>Editor</div>}
+        resultsContent={<div>Results</div>}
+      />
+    )
+
+    await user.click(
+      screen.getByRole("button", { name: "Rename plan: Branch office" })
+    )
+    const input = screen.getByRole("textbox", { name: "Plan name" })
+    await user.clear(input)
+    await user.type(input, "Datacenter{Enter}")
+
+    expect(onPlanNameChange).toHaveBeenCalledTimes(1)
+    expect(onPlanNameChange).toHaveBeenCalledWith("Datacenter")
+  })
 
   it("shows blocking diagnostics and capacity without hiding the editor", () => {
     const diagnostics = diagnosePlan({
