@@ -31,6 +31,9 @@ function RenameHarness({ initialName = "" }: { initialName?: string }) {
       resultsAreStale={false}
       planName={planName}
       onPlanNameChange={setPlanName}
+      planBaseNetwork="192.168.10.0"
+      planBaseCidr="24"
+      requirementCount={1}
       hasMeaningfulEdits={false}
       onApplyTemplate={vi.fn()}
       editor={<div>Editor</div>}
@@ -52,6 +55,9 @@ function ControlledRenameHarness({
       resultsAreStale={false}
       planName={planName}
       onPlanNameChange={onPlanNameChange}
+      planBaseNetwork="192.168.10.0"
+      planBaseCidr="24"
+      requirementCount={1}
       hasMeaningfulEdits={false}
       onApplyTemplate={vi.fn()}
       editor={<div>Editor</div>}
@@ -62,6 +68,31 @@ function ControlledRenameHarness({
 
 describe("PlannerWorkspace", () => {
   beforeEach(() => localStorage.clear())
+
+  it("leads with plan name and current network metadata", () => {
+    render(
+      <PlannerWorkspace
+        diagnostics={validDiagnostics}
+        resultsAreStale={false}
+        planName="Branch office"
+        onPlanNameChange={vi.fn()}
+        planBaseNetwork="192.168.10.0"
+        planBaseCidr="24"
+        requirementCount={1}
+        hasMeaningfulEdits={false}
+        onApplyTemplate={vi.fn()}
+        editor={<div>Editor</div>}
+        resultsContent={<div>Results</div>}
+      />
+    )
+
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Branch office" })
+    ).toBeInTheDocument()
+    expect(screen.getByText("192.168.10.0/24 · 1 requirements")).toBeInTheDocument()
+    expect(screen.queryByText("IPv4 plan")).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Draft requirements" })).toBeInTheDocument()
+  })
 
   it("renames an untitled plan inline with the keyboard", async () => {
     const user = userEvent.setup()
@@ -124,6 +155,9 @@ describe("PlannerWorkspace", () => {
         resultsAreStale={false}
         planName="Branch office"
         onPlanNameChange={onPlanNameChange}
+        planBaseNetwork="192.168.10.0"
+        planBaseCidr="24"
+        requirementCount={1}
         hasMeaningfulEdits={false}
         onApplyTemplate={vi.fn()}
         editor={<div>Editor</div>}
@@ -157,6 +191,9 @@ describe("PlannerWorkspace", () => {
         resultsAreStale={false}
         planName="Branch office"
         onPlanNameChange={onPlanNameChange}
+        planBaseNetwork="192.168.10.0"
+        planBaseCidr="24"
+        requirementCount={1}
         hasMeaningfulEdits={false}
         onApplyTemplate={vi.fn()}
         editor={<div>Editor</div>}
@@ -217,6 +254,9 @@ describe("PlannerWorkspace", () => {
         resultsAreStale={false}
         planName=""
         onPlanNameChange={vi.fn()}
+        planBaseNetwork="192.168.10.0"
+        planBaseCidr="24"
+        requirementCount={1}
         hasMeaningfulEdits={false}
         onApplyTemplate={vi.fn()}
         editor={<div>Editor remains visible</div>}
@@ -237,6 +277,9 @@ describe("PlannerWorkspace", () => {
         resultsAreStale
         planName="Branch office"
         onPlanNameChange={vi.fn()}
+        planBaseNetwork="192.168.10.0"
+        planBaseCidr="24"
+        requirementCount={1}
         hasMeaningfulEdits
         onApplyTemplate={vi.fn()}
         editor={<div>Editor</div>}
@@ -255,6 +298,9 @@ describe("PlannerWorkspace", () => {
         resultsAreStale={false}
         planName=""
         onPlanNameChange={vi.fn()}
+        planBaseNetwork="192.168.10.0"
+        planBaseCidr="24"
+        requirementCount={1}
         hasMeaningfulEdits={false}
         onApplyTemplate={vi.fn()}
         editor={<div>Editor</div>}

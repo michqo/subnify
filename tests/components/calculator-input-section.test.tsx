@@ -60,6 +60,32 @@ function StatefulSubnetName({
 }
 
 describe("CalculatorInputSection", () => {
+  it("uses concise planner labels and state copy", () => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      }
+    )
+    render(
+      <CalculatorInputSection
+        {...buildProps({
+          isAuthenticated: true,
+          shouldSaveToCloud: false,
+        })}
+      />
+    )
+
+    expect(screen.getByRole("heading", { name: "Plan" })).toBeInTheDocument()
+    expect(screen.getByLabelText("Parent network")).toBeInTheDocument()
+    expect(screen.getByLabelText("Prefix")).toBeInTheDocument()
+    expect(screen.getByText("Requirements")).toBeInTheDocument()
+    expect(screen.getByLabelText("Save to history")).toBeInTheDocument()
+    expect(screen.queryByText(/Each entry defines/i)).not.toBeInTheDocument()
+  })
+
   it("associates errors and focuses the plan alert", async () => {
     const onBaseNetworkChange = vi.fn()
     render(
@@ -83,11 +109,11 @@ describe("CalculatorInputSection", () => {
       />
     )
 
-    expect(screen.getByLabelText("Base Network")).toHaveAttribute(
+    expect(screen.getByLabelText("Parent network")).toHaveAttribute(
       "aria-invalid",
       "true"
     )
-    expect(screen.getByLabelText("Base Network")).toHaveAccessibleDescription(
+    expect(screen.getByLabelText("Parent network")).toHaveAccessibleDescription(
       /canonical network/i
     )
     expect(await screen.findByRole("alert")).toHaveFocus()
@@ -149,7 +175,7 @@ describe("CalculatorInputSection", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Use the canonical network."
     )
-    expect(await screen.findByLabelText("Base Network")).toHaveFocus()
+    expect(await screen.findByLabelText("Parent network")).toHaveFocus()
   })
 
   it("announces and focuses an invalid-host-only submitted failure", async () => {
@@ -218,11 +244,11 @@ describe("CalculatorInputSection", () => {
     )
     expect(
       screen.getByRole("checkbox", {
-        name: /save this manual calculation to cloud history/i,
+        name: /save to history/i,
       })
     ).toHaveClass("after:-inset-3.5")
     expect(
-      screen.getByText(/save this manual calculation to cloud history/i)
+      screen.getByText(/save to history/i)
     ).toHaveClass("min-h-11")
   })
 

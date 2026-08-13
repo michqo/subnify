@@ -13,6 +13,9 @@ type PlannerWorkspaceProps = {
   resultsAreStale: boolean
   planName: string
   onPlanNameChange: (name: string) => void
+  planBaseNetwork: string
+  planBaseCidr: string
+  requirementCount: number
   hasMeaningfulEdits: boolean
   onApplyTemplate: (plan: ReplacePlanInput) => void
   onApplyRequirements?: (plan: ReplacePlanInput) => void
@@ -25,6 +28,9 @@ export function PlannerWorkspace({
   resultsAreStale,
   planName,
   onPlanNameChange,
+  planBaseNetwork,
+  planBaseCidr,
+  requirementCount,
   hasMeaningfulEdits,
   onApplyTemplate,
   onApplyRequirements = onApplyTemplate,
@@ -36,6 +42,9 @@ export function PlannerWorkspace({
       <PlannerToolbar
         planName={planName}
         onPlanNameChange={onPlanNameChange}
+        planBaseNetwork={planBaseNetwork}
+        planBaseCidr={planBaseCidr}
+        requirementCount={requirementCount}
         hasMeaningfulEdits={hasMeaningfulEdits}
         onApplyTemplate={onApplyTemplate}
         onApplyRequirements={onApplyRequirements}

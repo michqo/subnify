@@ -21,8 +21,8 @@ class PlannerPage {
   constructor(page: Page) {
     this.page = page
     this.editor = page.getByRole("region", { name: "Plan editor" })
-    this.baseNetwork = page.getByLabel("Base Network")
-    this.baseCidr = page.getByLabel("CIDR Notation")
+    this.baseNetwork = page.getByLabel("Parent network")
+    this.baseCidr = page.getByLabel("Prefix")
     this.calculateButton = page.getByRole("button", { name: "Calculate VLSM" })
     this.copyButton = page.getByRole("button", { name: /^(Copy|Copied)$/ })
     this.pdfButton = page.getByRole("button", { name: /^(PDF|Exporting)$/ })

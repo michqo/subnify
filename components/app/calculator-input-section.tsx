@@ -191,9 +191,9 @@ export function CalculatorInputSection({
     <div>
       <div className="flex flex-row items-center justify-between border-b border-border pb-4">
         <div className="flex items-center gap-2">
-          <h2 className="font-mono text-sm font-semibold">Network input</h2>
-          {isEditingAiCloudPlan ? <Badge variant="secondary">Editing AI design plan</Badge> : null}
-          {!isEditingAiCloudPlan && isCloudLinkedPlan ? <Badge variant="outline">Editing saved plan</Badge> : null}
+          <h2 className="font-mono text-sm font-semibold">Plan</h2>
+          {isEditingAiCloudPlan ? <Badge variant="secondary">AI</Badge> : null}
+          {!isEditingAiCloudPlan && isCloudLinkedPlan ? <Badge variant="outline">Saved</Badge> : null}
         </div>
       </div>
       <div className="space-y-6 pt-5">
@@ -211,7 +211,7 @@ export function CalculatorInputSection({
           <FieldGroup>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Field className="sm:col-span-2 lg:col-span-1">
-                <FieldLabel htmlFor="baseNetwork">Base Network</FieldLabel>
+                <FieldLabel htmlFor="baseNetwork">Parent network</FieldLabel>
                 <Input
                   id="baseNetwork"
                   value={baseNetwork}
@@ -242,7 +242,7 @@ export function CalculatorInputSection({
                 ) : null}
               </Field>
               <Field className="w-24">
-                <FieldLabel htmlFor="baseCidr">CIDR Notation</FieldLabel>
+                <FieldLabel htmlFor="baseCidr">Prefix</FieldLabel>
                 <Input
                   type="number"
                   id="baseCidr"
@@ -296,7 +296,7 @@ export function CalculatorInputSection({
                   className="after:-inset-3.5 md:after:-inset-x-3 md:after:-inset-y-2"
                 />
                 <FieldLabel htmlFor="saveToCloud" className="min-h-11 cursor-pointer items-center md:min-h-9">
-                  Save this manual calculation to cloud history
+                  Save to history
                 </FieldLabel>
               </Field>
             ) : null}
@@ -305,23 +305,21 @@ export function CalculatorInputSection({
               <Field>
                 <FieldDescription>
                   {isEditingAiCloudPlan
-                    ? "You are editing a saved AI design plan. Recalculate to update it in cloud history."
-                    : "AI-generated design loaded. Recalculate to save it to cloud history."}
+                    ? "Calculate to update this saved AI plan."
+                    : "Calculate to save this AI plan."}
                 </FieldDescription>
               </Field>
             ) : null}
 
             {!isAiPlan && isCloudLinkedPlan ? (
               <Field>
-                <FieldDescription>
-                  You are editing a saved plan. Recalculate to update it in cloud history.
-                </FieldDescription>
+                <FieldDescription>Calculate to update this saved plan.</FieldDescription>
               </Field>
             ) : null}
 
             <Field>
               <div className="flex items-center justify-between">
-                <FieldLabel>Subnet Requirements</FieldLabel>
+                <FieldLabel>Requirements</FieldLabel>
                 <Button type="button" variant="outline" size="sm" onClick={onAddSubnet} disabled={subnets.length >= 100} className="min-h-11 gap-1.5 md:min-h-9">
                   <Plus className="h-3.5 w-3.5" />
                   Add Subnet
@@ -346,7 +344,6 @@ export function CalculatorInputSection({
                   />
                 ))}
               </div>
-              <FieldDescription>Each entry defines a subnet name and required hosts.</FieldDescription>
             </Field>
 
             {submittedIssues.length > 0 ? (

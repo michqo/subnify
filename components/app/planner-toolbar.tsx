@@ -14,6 +14,9 @@ import type { ReplacePlanInput } from "@/lib/state/subnet-plan-types"
 type PlannerToolbarProps = {
   planName: string
   onPlanNameChange: (name: string) => void
+  planBaseNetwork: string
+  planBaseCidr: string
+  requirementCount: number
   hasMeaningfulEdits: boolean
   onApplyTemplate: (plan: ReplacePlanInput) => void
   onApplyRequirements: (plan: ReplacePlanInput) => void
@@ -22,6 +25,9 @@ type PlannerToolbarProps = {
 export function PlannerToolbar({
   planName,
   onPlanNameChange,
+  planBaseNetwork,
+  planBaseCidr,
+  requirementCount,
   hasMeaningfulEdits,
   onApplyTemplate,
   onApplyRequirements,
@@ -41,6 +47,9 @@ export function PlannerToolbar({
   const [generatorOpen, setGeneratorOpen] = useState(() => searchParams.get("generate") === "1")
   const { isAuthenticated, isAuthLoading, openAuthDialog } = useAuth()
   const displayName = planName.trim() || "Untitled plan"
+  const parentNetwork = planBaseNetwork.trim() || "—"
+  const prefix = planBaseCidr.trim() || "—"
+  const planMetadata = `${parentNetwork}/${prefix} · ${requirementCount} requirements`
   const isEditingCurrentName = isEditingName && editSessionPlanName === planName
 
   const startNameEdit = () => {
@@ -121,8 +130,7 @@ export function PlannerToolbar({
     <>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
         <div className="min-w-0 flex-1">
-          <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-primary">IPv4 plan</p>
-          <h1 className="mt-1 min-w-0 text-xl font-semibold tracking-tight">
+          <h1 className="min-w-0 text-xl font-semibold tracking-tight">
             {isEditingCurrentName ? (
               <Input
                 ref={nameInputRef}
@@ -147,6 +155,9 @@ export function PlannerToolbar({
               </button>
             )}
           </h1>
+          <p className="mt-1 font-mono text-xs text-muted-foreground">
+            {planMetadata}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setTemplatesOpen(true)}>
@@ -163,7 +174,7 @@ export function PlannerToolbar({
               setGeneratorOpen(true)
             }}
           >
-            <Sparkles className="size-4" /> Generate requirements
+            <Sparkles className="size-4" /> Draft requirements
           </Button>
         </div>
       </div>

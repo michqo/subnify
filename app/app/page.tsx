@@ -128,6 +128,9 @@ function CalculatorPageContent() {
         resultsAreStale={resultsAreStale}
         planName={planName}
         onPlanNameChange={setPlanName}
+        planBaseNetwork={formValues.baseNetwork}
+        planBaseCidr={formValues.baseCidr}
+        requirementCount={formValues.subnets.length}
         hasMeaningfulEdits={
           formValues.baseNetwork !== "192.168.1.0" ||
           formValues.baseCidr !== "24" ||
