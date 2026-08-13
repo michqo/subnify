@@ -6,8 +6,8 @@ export type CalculationEventPayload = {
 }
 
 export function recordCalculationEvent(payload: CalculationEventPayload) {
-  const normalizedPayload = {
-    ...payload,
+  const normalizedPayload: CalculationEventPayload = {
+    event: payload.event,
     issueCodes: [...new Set(payload.issueCodes)],
   }
 

@@ -46,6 +46,28 @@ describe("recordCalculationEvent", () => {
     })
   })
 
+  it("drops extra private fields from structurally compatible payloads", () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 204 }))
+    vi.stubGlobal("fetch", fetchMock)
+    const payloadWithPrivateData = {
+      event: "success" as const,
+      issueCodes: [],
+      baseNetwork: "10.0.0.0",
+      prompt: "segment the private office network",
+    }
+
+    recordCalculationEvent(payloadWithPrivateData)
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/calculation-events", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: '{"event":"success","issueCodes":[]}',
+      keepalive: true,
+    })
+  })
+
   it("returns immediately and swallows rejected telemetry transport", async () => {
     const fetchMock = vi.fn().mockRejectedValue(new Error("offline"))
     vi.stubGlobal("fetch", fetchMock)
