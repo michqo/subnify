@@ -39,6 +39,10 @@ describe("HistoryList", () => {
     const user = userEvent.setup()
     render(<HistoryList />)
 
+    expect(screen.getByRole("heading", { level: 1, name: "Saved plans" })).toBeInTheDocument()
+    expect(screen.getByPlaceholderText("Search name or network")).toBeInTheDocument()
+    expect(screen.queryByText("Cloud workspace")).not.toBeInTheDocument()
+
     await user.type(screen.getByLabelText("Search plans"), "10.20")
     expect(screen.getByText("Campus draft")).toBeInTheDocument()
     expect(screen.queryByText("Branch office")).not.toBeInTheDocument()
@@ -54,10 +58,11 @@ describe("HistoryList", () => {
     render(<HistoryList />)
 
     await user.click(screen.getByRole("button", { name: "Rename Branch office" }))
-    const title = screen.getByLabelText("Plan title")
+    const title = screen.getByRole("textbox", { name: "Name" })
+    expect(screen.queryByText(/short name you can recognize/i)).not.toBeInTheDocument()
     await user.clear(title)
     await user.type(title, "Bratislava branch")
-    await user.click(screen.getByRole("button", { name: "Save name" }))
+    await user.click(screen.getByRole("button", { name: "Save" }))
     expect(rename).toHaveBeenCalledWith({ calculationId: "manual-1", title: "Bratislava branch" })
 
     await user.click(screen.getByRole("button", { name: "Duplicate Branch office" }))
