@@ -12,7 +12,10 @@ import type {
   VlsmPlanInput,
 } from "@/lib/vlsm"
 import { useCopyResults } from "@/hooks/use-copy-results"
-import type { SubnetInput } from "@/lib/state/subnet-plan-types"
+import type {
+  ReplacePlanInput,
+  SubnetInput,
+} from "@/lib/state/subnet-plan-types"
 import { diagnosePlan } from "@/lib/planner/diagnostics"
 import type { PlanView } from "@/lib/plan-view"
 
@@ -23,6 +26,19 @@ type SaveCalculationInput = {
   title?: string | null
   calculationId?: string | null
   successMessage?: string
+}
+
+export type CalculationSourceSnapshot = Pick<
+  ReplacePlanInput,
+  "baseNetwork" | "baseCidr" | "subnets"
+>
+
+function fingerprintPlan(source: CalculationSourceSnapshot) {
+  return JSON.stringify([
+    source.baseNetwork,
+    source.baseCidr,
+    source.subnets,
+  ])
 }
 
 export type UseCalculatorPageControllerArgs = {
@@ -91,15 +107,7 @@ export function useCalculatorPageController({
   const { copied, copyResults } = useCopyResults()
   const [exporting, setExporting] = useState(false)
   const [selectedSubnet, setSelectedSubnet] = useState<number | null>(null)
-  const currentPlanFingerprint = useMemo(
-    () =>
-      JSON.stringify([
-        formValues.baseNetwork,
-        formValues.baseCidr,
-        formValues.subnets,
-      ]),
-    [formValues.baseNetwork, formValues.baseCidr, formValues.subnets]
-  )
+  const currentPlanFingerprint = fingerprintPlan(formValues)
   const diagnostics = useMemo(
     () =>
       diagnosePlan({
@@ -113,30 +121,22 @@ export function useCalculatorPageController({
   const replaceCalculation = useCallback(
     (
       nextCalculation: VlsmCalculationSuccess | null,
-      issues: VlsmIssue[] = []
+      issues: VlsmIssue[] = [],
+      source?: CalculationSourceSnapshot
     ) => {
-      setCommittedPlanFingerprint(null)
+      setCommittedPlanFingerprint(
+        nextCalculation !== null && source !== undefined
+          ? fingerprintPlan(source)
+          : null
+      )
       setSubmittedIssues(issues)
       setCalculation(nextCalculation)
     },
     []
   )
 
-  useEffect(() => {
-    if (calculation === null || committedPlanFingerprint !== null) {
-      return
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setCommittedPlanFingerprint(currentPlanFingerprint)
-    }, 0)
-
-    return () => window.clearTimeout(timeoutId)
-  }, [calculation, committedPlanFingerprint, currentPlanFingerprint])
-
   const resultsAreStale =
     calculation !== null &&
-    committedPlanFingerprint !== null &&
     committedPlanFingerprint !== currentPlanFingerprint
 
   useEffect(() => {

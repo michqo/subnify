@@ -92,7 +92,13 @@ describe("useHistoryRestoration", () => {
       expect.objectContaining({
         ok: true,
         parent: expect.objectContaining({ networkAddress: "10.20.0.0" }),
-      }) satisfies Partial<VlsmCalculationSuccess>
+      }) satisfies Partial<VlsmCalculationSuccess>,
+      [],
+      expect.objectContaining({
+        baseNetwork: "10.20.0.0",
+        baseCidr: "24",
+        subnets: [{ id: 1, name: "Restored LAN", hosts: 30 }],
+      })
     )
   })
 

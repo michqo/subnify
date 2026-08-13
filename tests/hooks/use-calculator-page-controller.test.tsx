@@ -11,6 +11,73 @@ import { calculateVlsm } from "@/lib/vlsm"
 vi.mock("@/lib/calculator/export-pdf", () => ({ exportVlsmPdf: vi.fn() }))
 
 describe("useCalculatorPageController", () => {
+  it("keeps restored results bound to their source when the form changes before queued effects", async () => {
+    vi.useFakeTimers()
+    vi.mocked(exportVlsmPdf).mockClear()
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    })
+    const sourceForm = {
+      baseNetwork: "10.20.0.0",
+      baseCidr: "24",
+      subnets: [{ id: 1, name: "Restored LAN", hosts: 30 }],
+      sourceType: "history" as const,
+      aiPrompt: null,
+      aiRationale: null,
+    }
+    const restored = calculateVlsm({
+      ...sourceForm,
+      baseCidr: Number(sourceForm.baseCidr),
+    })
+    if (!restored.ok) throw new Error("fixture must be valid")
+    const props = {
+      formValues: sourceForm,
+      isAiPlan: false,
+      isCloudLinkedPlan: true,
+      shouldSaveToCloud: false,
+      isAuthenticated: true,
+      signInToSaveMessage: "Sign in.",
+      planName: "Restored",
+      activeCloudPlanId: "restored",
+      updateSuccessMessage: "Updated.",
+      saveSuccessMessage: "Saved.",
+      saveCalculation: vi.fn().mockResolvedValue(undefined),
+      calculateVlsm,
+      resetPlanForm: vi.fn(),
+      setPlanName: vi.fn(),
+      setShouldSaveToCloud: vi.fn(),
+      setActiveCloudPlanId: vi.fn(),
+      emailConfirmedFromQuery: false,
+      buildAppUrl: () => "/app",
+      resolveViewFromQuery: () => "table" as const,
+      replaceToCurrentView: vi.fn(),
+    } satisfies UseCalculatorPageControllerArgs
+    const { result, rerender } = renderHook(
+      (nextProps: UseCalculatorPageControllerArgs) =>
+        useCalculatorPageController(nextProps),
+      { initialProps: props }
+    )
+
+    try {
+      act(() => result.current.setCalculation(restored, [], sourceForm))
+      rerender({
+        ...props,
+        formValues: { ...sourceForm, baseNetwork: "10.30.0.0" },
+      })
+      act(() => vi.runAllTimers())
+
+      expect(result.current.resultsAreStale).toBe(true)
+      act(() => result.current.onCopyResults())
+      expect(writeText).not.toHaveBeenCalled()
+      await act(() => result.current.exportPdf())
+      expect(exportVlsmPdf).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("clears stale results and skips persistence after an invalid submission", async () => {
     const saveCalculation = vi.fn().mockResolvedValue(undefined)
     const calculate = vi.fn(calculateVlsm)

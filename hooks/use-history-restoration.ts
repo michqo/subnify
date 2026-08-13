@@ -21,7 +21,11 @@ type UseHistoryRestorationArgs = {
   replaceToCurrentView: () => void
   setCalculation: (
     calculation: VlsmCalculationSuccess | null,
-    issues?: VlsmIssue[]
+    issues?: VlsmIssue[],
+    source?: Pick<
+      ReplacePlanInput,
+      "baseNetwork" | "baseCidr" | "subnets"
+    >
   ) => void
   setPlanName: Dispatch<SetStateAction<string>>
   setActiveCloudPlanId: Dispatch<SetStateAction<string | null>>
@@ -81,7 +85,7 @@ export function useHistoryRestoration({
 
       replacePlan(restored.inputs)
       if (restored.calculation) {
-        setCalculation(restored.calculation)
+        setCalculation(restored.calculation, [], restored.inputs)
       } else {
         setCalculation(null, restored.issues)
       }
