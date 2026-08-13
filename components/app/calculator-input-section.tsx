@@ -191,7 +191,7 @@ export function CalculatorInputSection({
     <div>
       <div className="flex flex-row items-center justify-between border-b border-border pb-4">
         <div className="flex items-center gap-2">
-          <h2 className="font-mono text-sm font-semibold">Plan</h2>
+          <h2 className="text-sm font-semibold">Plan</h2>
           {isEditingAiCloudPlan ? <Badge variant="secondary">AI</Badge> : null}
           {!isEditingAiCloudPlan && isCloudLinkedPlan ? <Badge variant="outline">Saved</Badge> : null}
         </div>

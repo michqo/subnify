@@ -78,7 +78,9 @@ describe("CalculatorInputSection", () => {
       />
     )
 
-    expect(screen.getByRole("heading", { name: "Plan" })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "Plan" })).not.toHaveClass(
+      "font-mono"
+    )
     expect(screen.getByLabelText("Parent network")).toBeInTheDocument()
     expect(screen.getByLabelText("Prefix")).toBeInTheDocument()
     expect(screen.getByText("Requirements")).toBeInTheDocument()
