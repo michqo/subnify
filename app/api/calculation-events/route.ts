@@ -48,7 +48,60 @@ function isCalculationEventPayload(value: unknown): value is CalculationEventPay
   )
 }
 
+function hasJsonContentType(request: Request) {
+  const mediaType = request.headers
+    .get("content-type")
+    ?.split(";", 1)[0]
+    .trim()
+    .toLowerCase()
+
+  return mediaType === "application/json"
+}
+
+async function readBoundedBody(request: Request): Promise<string | null> {
+  const reader = request.body?.getReader()
+  if (!reader) return null
+
+  const chunks: Uint8Array[] = []
+  let totalBytes = 0
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      totalBytes += value.byteLength
+      if (totalBytes > MAX_BODY_BYTES) {
+        try {
+          await reader.cancel()
+        } catch {
+          // Rejection still terminates telemetry processing.
+        }
+        return null
+      }
+      chunks.push(value)
+    }
+
+    const bodyBytes = new Uint8Array(totalBytes)
+    let offset = 0
+    for (const chunk of chunks) {
+      bodyBytes.set(chunk, offset)
+      offset += chunk.byteLength
+    }
+
+    return new TextDecoder("utf-8", { fatal: true }).decode(bodyBytes)
+  } catch {
+    return null
+  } finally {
+    reader.releaseLock()
+  }
+}
+
 export async function POST(request: Request) {
+  if (!hasJsonContentType(request)) {
+    return new Response(null, { status: 400 })
+  }
+
   const contentLength = request.headers.get("content-length")
   if (
     contentLength !== null &&
@@ -57,14 +110,8 @@ export async function POST(request: Request) {
     return new Response(null, { status: 400 })
   }
 
-  let body: string
-  try {
-    body = await request.text()
-  } catch {
-    return new Response(null, { status: 400 })
-  }
-
-  if (new TextEncoder().encode(body).byteLength > MAX_BODY_BYTES) {
+  const body = await readBoundedBody(request)
+  if (body === null) {
     return new Response(null, { status: 400 })
   }
 

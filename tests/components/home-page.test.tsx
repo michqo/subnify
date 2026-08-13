@@ -24,8 +24,12 @@ describe("Subnify help", () => {
   it("explains calculation rules, examples, and retained plan data", () => {
     render(<HelpPage />)
 
-    expect(screen.getByText(/largest required block first/i)).toBeInTheDocument()
-    expect(screen.getByText(/stable tie ordering/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/largest requested host count first/i)
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(/equal requested-host counts retain input order/i)
+    ).toBeInTheDocument()
     expect(screen.getAllByText(/network and broadcast addresses/i)).toHaveLength(2)
     expect(screen.getByText("/31")).toBeInTheDocument()
     expect(screen.getByText("/32")).toBeInTheDocument()

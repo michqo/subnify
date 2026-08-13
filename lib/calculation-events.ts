@@ -6,10 +6,15 @@ export type CalculationEventPayload = {
 }
 
 export function recordCalculationEvent(payload: CalculationEventPayload) {
+  const normalizedPayload = {
+    ...payload,
+    issueCodes: [...new Set(payload.issueCodes)],
+  }
+
   void fetch("/api/calculation-events", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(normalizedPayload),
     keepalive: true,
   }).catch(() => undefined)
 }

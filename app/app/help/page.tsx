@@ -19,10 +19,10 @@ const sections = [
       <>
         CIDR describes block size. VLSM assigns each requirement the smallest
         power-of-two block that can hold its requested hosts plus reserved
-        network and broadcast addresses. Subnify allocates the largest required
-        block first; stable tie ordering keeps equal-size requirements in their
-        original input order. <code className="font-mono text-primary">/31</code>{" "}
-        and <code className="font-mono text-primary">/32</code> allocations are
+        network and broadcast addresses. Subnify allocates the largest requested
+        host count first; equal requested-host counts retain input order.{" "}
+        <code className="font-mono text-primary">/31</code> and{" "}
+        <code className="font-mono text-primary">/32</code> allocations are
         excluded because this planner uses the traditional network/broadcast
         reservation model.
       </>
