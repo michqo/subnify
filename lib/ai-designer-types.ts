@@ -6,12 +6,20 @@ export type DesignerSubnet = {
   purpose?: string
 }
 
-export type DesignerPlan = {
+export type DesignerPlanCandidate = {
   baseNetwork: string | null
   baseCidr: number | null
   title: string
   rationale: string
   subnets: DesignerSubnet[]
+}
+
+export type DesignerPlan = Omit<
+  DesignerPlanCandidate,
+  "baseNetwork" | "baseCidr"
+> & {
+  baseNetwork: string
+  baseCidr: number
 }
 
 export type QuotaSnapshot = {

@@ -185,12 +185,12 @@ describe("ai designer route", () => {
     )
   })
 
-  it("preserves a nullable base so deterministic defaults are validated", async () => {
+  it("returns the exact effective default plan accepted by the shared engine", async () => {
     completion.mockResolvedValue(
       modelJson({
         baseNetwork: null,
         baseCidr: null,
-        subnets: [{ name: "LAN", hosts: 50 }],
+        subnets: [{ name: "LAN", hosts: 1 }],
       })
     )
 
@@ -198,7 +198,11 @@ describe("ai designer route", () => {
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toMatchObject({
-      plan: { baseNetwork: null, baseCidr: null },
+      plan: {
+        baseNetwork: "192.168.0.0",
+        baseCidr: 24,
+        subnets: [{ name: "LAN", hosts: 1 }],
+      },
     })
   })
 

@@ -75,7 +75,6 @@ SUPABASE_SERVICE_ROLE_KEY=
 
 OPENROUTER_API_KEY=
 OPENROUTER_MODEL=nvidia/nemotron-3-super-120b-a12b:free
-AI_DESIGN_DAILY_LIMIT=3
 ```
 
 ## Setup notes
@@ -84,6 +83,8 @@ AI_DESIGN_DAILY_LIMIT=3
 2. Run all SQL migrations in [supabase/migrations](supabase/migrations), including `202608120001_calculation_host_bigint.sql` for IPv4-sized host totals and `202608120002_atomic_ai_quota.sql` for service-role-only atomic AI quota enforcement.
 3. Enable auth providers you want (Email, GitHub).
 4. Configure redirect URLs for local/prod auth callbacks.
+
+AI quota policy is database-owned: default `3` requests per rolling `24` hours, with pending reservations expiring after `5` minutes. Change policy only through a new privileged forward migration that updates `private.ai_design_quota_policy`; never edit a migration already deployed.
 
 ## Project map
 

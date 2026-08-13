@@ -65,7 +65,10 @@ export function CalculatorResultsSection({
   const outputsDisabled = calculation === null || resultsAreStale
 
   return (
-    <div className="rounded-md border border-border bg-card/80">
+    <section
+      aria-label="Committed VLSM results"
+      className="rounded-md border border-border bg-card/80"
+    >
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
         <div>
           <h2 className="font-mono text-sm font-semibold">Committed results</h2>
@@ -228,6 +231,6 @@ export function CalculatorResultsSection({
           )}
         </TabsContent>
       </Tabs>
-    </div>
+    </section>
   )
 }

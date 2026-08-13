@@ -38,7 +38,7 @@ export function AllocationMap({
               aria-pressed={selected}
               onClick={() => onToggleSubnet(subnetId)}
               className={cn(
-                "absolute inset-y-0 min-h-11 overflow-hidden border-r border-background/60 bg-primary/25 px-1 font-mono text-[10px] transition-[box-shadow,background-color] duration-150 hover:bg-primary/35 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none md:min-h-0",
+                "absolute inset-y-0 min-h-11 min-w-11 overflow-hidden border-r border-background/60 bg-primary/25 px-1 font-mono text-[10px] transition-[box-shadow,background-color] duration-150 hover:bg-primary/35 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none md:min-h-0 md:min-w-0",
                 index % 2 === 1 && "bg-primary/40",
                 selected &&
                   "z-10 border-2 border-primary bg-primary/55 shadow-[inset_0_0_0_2px_var(--primary)]"

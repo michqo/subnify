@@ -4,6 +4,7 @@ import OpenAI from "openai"
 import {
   MAX_AI_PROMPT_LENGTH,
   type DesignerPlan,
+  type DesignerPlanCandidate,
   type QuotaSnapshot,
 } from "@/lib/ai-designer-types"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin"
@@ -19,7 +20,7 @@ const PROVIDER_TIMEOUT_MS = 120_000
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-function sanitizePlan(input: unknown): DesignerPlan {
+function sanitizePlan(input: unknown): DesignerPlanCandidate {
   const source =
     typeof input === "object" && input
       ? (input as Record<string, unknown>)
@@ -424,10 +425,15 @@ Rules:
     )
   }
 
-  const plan = sanitizePlan(parsed)
+  const candidatePlan = sanitizePlan(parsed)
+  const plan: DesignerPlan = {
+    ...candidatePlan,
+    baseNetwork: candidatePlan.baseNetwork ?? "192.168.0.0",
+    baseCidr: candidatePlan.baseCidr ?? 24,
+  }
   const calculation = calculateVlsm({
-    baseNetwork: plan.baseNetwork ?? "192.168.0.0",
-    baseCidr: plan.baseCidr ?? 24,
+    baseNetwork: plan.baseNetwork,
+    baseCidr: plan.baseCidr,
     subnets: plan.subnets.map((subnet, index) => ({
       id: index + 1,
       name: subnet.name,

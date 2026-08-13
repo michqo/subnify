@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { GenerateRequirementsDialog } from "@/components/app/generate-requirements-dialog"
+import { calculateVlsm } from "@/lib/vlsm"
 
 const { generate } = vi.hoisted(() => ({ generate: vi.fn() }))
 
@@ -70,6 +71,53 @@ describe("GenerateRequirementsDialog", () => {
       aiRationale: "Separate trust zones.",
       suggestedTitle: "Three-floor office",
     })
+  })
+
+  it("previews and applies the same effective defaults without changing one host", async () => {
+    const user = userEvent.setup()
+    const onApply = vi.fn()
+    generate.mockResolvedValueOnce({
+      plan: {
+        title: "Small default network",
+        rationale: "Use the deterministic defaults.",
+        baseNetwork: null,
+        baseCidr: null,
+        subnets: [{ name: "Printer", hosts: 1 }],
+      },
+    })
+
+    render(
+      <GenerateRequirementsDialog
+        open
+        onOpenChange={vi.fn()}
+        onApply={onApply}
+      />
+    )
+    await user.type(
+      screen.getByLabelText("Environment requirements"),
+      "one printer"
+    )
+    await user.click(
+      screen.getByRole("button", { name: "Generate requirements" })
+    )
+
+    expect(await screen.findByText("192.168.0.0/24")).toBeInTheDocument()
+    expect(screen.getByText("1 hosts")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Apply to planner" }))
+
+    const appliedPlan = onApply.mock.calls[0]?.[0]
+    expect(appliedPlan).toMatchObject({
+      baseNetwork: "192.168.0.0",
+      baseCidr: "24",
+      subnets: [{ id: 1, name: "Printer", hosts: 1 }],
+    })
+    expect(
+      calculateVlsm({
+        baseNetwork: appliedPlan.baseNetwork,
+        baseCidr: Number(appliedPlan.baseCidr),
+        subnets: appliedPlan.subnets,
+      }).ok
+    ).toBe(true)
   })
 
   it("preserves the prompt after generation failure", async () => {

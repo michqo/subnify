@@ -129,6 +129,53 @@ describe("CalculatorInputSection", () => {
     )
   })
 
+  it("announces and focuses a noncanonical-only submitted failure", async () => {
+    render(
+      <CalculatorInputSection
+        {...buildProps({
+          submittedIssues: [
+            {
+              code: "NON_CANONICAL_BASE_NETWORK",
+              field: "baseNetwork",
+              message: "Use the canonical network.",
+              suggestion: "192.168.1.0",
+            },
+          ],
+        })}
+      />
+    )
+
+    expect(screen.getAllByRole("alert")).toHaveLength(1)
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Use the canonical network."
+    )
+    expect(await screen.findByLabelText("Base Network")).toHaveFocus()
+  })
+
+  it("announces and focuses an invalid-host-only submitted failure", async () => {
+    render(
+      <CalculatorInputSection
+        {...buildProps({
+          submittedIssues: [
+            {
+              code: "INVALID_HOST_COUNT",
+              field: "subnets.0.hosts",
+              message: "Required hosts must be a whole number.",
+            },
+          ],
+        })}
+      />
+    )
+
+    expect(screen.getAllByRole("alert")).toHaveLength(1)
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Required hosts must be a whole number."
+    )
+    expect(
+      await screen.findByLabelText("Subnet 1 required hosts")
+    ).toHaveFocus()
+  })
+
   it("keeps submit available and enforces subnet input limits", () => {
     const subnets = Array.from({ length: 100 }, (_, index) => ({
       id: index + 1,

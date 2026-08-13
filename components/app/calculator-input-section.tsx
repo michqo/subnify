@@ -33,6 +33,8 @@ function SubnetRow({
 }: SubnetRowProps) {
   const nameErrorId = `subnet-${subnet.id}-name-error`
   const hostsErrorId = `subnet-${subnet.id}-hosts-error`
+  const nameInputId = `subnet-${subnet.id}-name`
+  const hostsInputId = `subnet-${subnet.id}-hosts`
   return (
     <div
       className="flex flex-col gap-3 rounded-lg border border-border bg-secondary/30 p-3 md:flex-row md:items-center"
@@ -42,6 +44,7 @@ function SubnetRow({
       </span>
       <div className="w-full flex-1 space-y-1">
         <Input
+          id={nameInputId}
           value={subnet.name}
           aria-label={`Subnet ${index + 1} name`}
           aria-invalid={nameIssues.length > 0 ? true : undefined}
@@ -64,6 +67,7 @@ function SubnetRow({
       <div className="w-full space-y-1 md:ml-auto md:w-auto">
         <div className="flex items-center gap-2">
           <Input
+            id={hostsInputId}
             type="number"
             value={subnet.hosts}
             aria-label={`Subnet ${index + 1} required hosts`}
@@ -141,7 +145,7 @@ export function CalculatorInputSection({
   onReset,
   submittedIssues,
 }: CalculatorInputSectionProps) {
-  const planAlertRef = useRef<HTMLDivElement>(null)
+  const submissionAlertRef = useRef<HTMLDivElement>(null)
   const planIssues = useMemo(
     () => submittedIssues.filter((issue) => issue.field === "subnets"),
     [submittedIssues]
@@ -160,8 +164,28 @@ export function CalculatorInputSection({
   )
 
   useEffect(() => {
-    if (planIssues.length > 0) planAlertRef.current?.focus()
-  }, [planIssues])
+    if (planIssues.length > 0) {
+      submissionAlertRef.current?.focus()
+      return
+    }
+
+    const firstFieldIssue = submittedIssues[0]
+    if (!firstFieldIssue) return
+
+    let targetId: string | undefined
+    if (firstFieldIssue.field === "baseNetwork") targetId = "baseNetwork"
+    if (firstFieldIssue.field === "baseCidr") targetId = "baseCidr"
+
+    const rowMatch = firstFieldIssue.field.match(
+      /^subnets\.(\d+)\.(name|hosts)$/
+    )
+    if (rowMatch) {
+      const subnet = subnets[Number(rowMatch[1])]
+      if (subnet) targetId = `subnet-${subnet.id}-${rowMatch[2]}`
+    }
+
+    if (targetId) document.getElementById(targetId)?.focus()
+  }, [planIssues, submittedIssues, subnets])
 
   return (
     <div>
@@ -325,16 +349,18 @@ export function CalculatorInputSection({
               <FieldDescription>Each entry defines a subnet name and required hosts.</FieldDescription>
             </Field>
 
-            {planIssues.length > 0 ? (
+            {submittedIssues.length > 0 ? (
               <div
-                id="plan-errors"
-                ref={planAlertRef}
+                id="submission-errors"
+                ref={submissionAlertRef}
                 role="alert"
                 tabIndex={-1}
                 className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                {planIssues.map((issue) => (
-                  <p key={issue.code}>{issue.message}</p>
+                {submittedIssues.map((issue, index) => (
+                  <p key={`${issue.code}-${issue.field}-${index}`}>
+                    {issue.message}
+                  </p>
                 ))}
               </div>
             ) : null}

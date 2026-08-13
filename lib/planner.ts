@@ -45,7 +45,7 @@ export function normalizeAiDesignedSubnets(subnets: AiDesignedSubnet[] | undefin
         typeof subnet.name === "string" && subnet.name.trim().length > 0
           ? subnet.name.trim()
           : `LAN ${String.fromCharCode(65 + (index % 26))}`,
-      hosts: Number.isFinite(Number(subnet.hosts)) ? Math.max(2, Math.floor(Number(subnet.hosts))) : 2,
+      hosts: Number.isFinite(Number(subnet.hosts)) ? Math.max(1, Math.floor(Number(subnet.hosts))) : 2,
     }))
     .slice(0, 20)
 }
@@ -59,7 +59,11 @@ export function getAiPlanBase(parsedPlan: AiDesignedPlan): {
       ? parsedPlan.baseNetwork.trim()
       : "192.168.0.0"
 
-  const baseCidr = Number.isFinite(Number(parsedPlan.baseCidr)) ? String(parsedPlan.baseCidr) : "24"
+  const baseCidr =
+    typeof parsedPlan.baseCidr === "number" &&
+    Number.isFinite(parsedPlan.baseCidr)
+      ? String(parsedPlan.baseCidr)
+      : "24"
 
   return { baseNetwork, baseCidr }
 }
