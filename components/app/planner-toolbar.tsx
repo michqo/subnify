@@ -29,25 +29,36 @@ export function PlannerToolbar({
   const [templatesOpen, setTemplatesOpen] = useState(false)
   const [isEditingName, setIsEditingName] = useState(false)
   const [draftName, setDraftName] = useState(planName)
+  const [editSessionPlanName, setEditSessionPlanName] = useState(planName)
   const nameInputRef = useRef<HTMLInputElement>(null)
+  const renameButtonRef = useRef<HTMLButtonElement>(null)
   const editSessionActiveRef = useRef(false)
   const originalNameRef = useRef(planName)
+  const shouldRestoreRenameButtonFocusRef = useRef(false)
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
   const [generatorOpen, setGeneratorOpen] = useState(() => searchParams.get("generate") === "1")
   const { isAuthenticated, isAuthLoading, openAuthDialog } = useAuth()
   const displayName = planName.trim() || "Untitled plan"
+  const isEditingCurrentName = isEditingName && editSessionPlanName === planName
 
   const startNameEdit = () => {
     originalNameRef.current = planName
     setDraftName(planName)
+    setEditSessionPlanName(planName)
     editSessionActiveRef.current = true
     setIsEditingName(true)
   }
 
   const commitNameEdit = () => {
     if (!editSessionActiveRef.current) return
+    if (planName !== originalNameRef.current) {
+      editSessionActiveRef.current = false
+      setDraftName(planName)
+      setIsEditingName(false)
+      return
+    }
     editSessionActiveRef.current = false
     onPlanNameChange(draftName.trim().length === 0 ? "" : draftName)
     setIsEditingName(false)
@@ -63,9 +74,11 @@ export function PlannerToolbar({
   const handleNameKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
       event.preventDefault()
+      shouldRestoreRenameButtonFocusRef.current = true
       event.currentTarget.blur()
     } else if (event.key === "Escape") {
       event.preventDefault()
+      shouldRestoreRenameButtonFocusRef.current = true
       cancelNameEdit()
     }
   }
@@ -74,6 +87,21 @@ export function PlannerToolbar({
     if (!isEditingName) return
     nameInputRef.current?.focus()
     nameInputRef.current?.select()
+  }, [isEditingName])
+
+  useEffect(() => {
+    if (!isEditingName || planName === originalNameRef.current) return
+    editSessionActiveRef.current = false
+    originalNameRef.current = planName
+    setDraftName(planName)
+    setEditSessionPlanName(planName)
+    setIsEditingName(false)
+  }, [isEditingName, planName])
+
+  useEffect(() => {
+    if (isEditingName || !shouldRestoreRenameButtonFocusRef.current) return
+    shouldRestoreRenameButtonFocusRef.current = false
+    renameButtonRef.current?.focus()
   }, [isEditingName])
 
   useEffect(() => {
@@ -95,7 +123,7 @@ export function PlannerToolbar({
         <div className="min-w-0 flex-1">
           <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-primary">IPv4 plan</p>
           <h1 className="mt-1 min-w-0 text-xl font-semibold tracking-tight">
-            {isEditingName ? (
+            {isEditingCurrentName ? (
               <Input
                 ref={nameInputRef}
                 aria-label="Plan name"
@@ -108,6 +136,7 @@ export function PlannerToolbar({
               />
             ) : (
               <button
+                ref={renameButtonRef}
                 type="button"
                 aria-label={`Rename plan: ${displayName}`}
                 onClick={startNameEdit}

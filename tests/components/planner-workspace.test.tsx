@@ -39,6 +39,27 @@ function RenameHarness({ initialName = "" }: { initialName?: string }) {
   )
 }
 
+function ControlledRenameHarness({
+  planName,
+  onPlanNameChange,
+}: {
+  planName: string
+  onPlanNameChange: (name: string) => void
+}) {
+  return (
+    <PlannerWorkspace
+      diagnostics={validDiagnostics}
+      resultsAreStale={false}
+      planName={planName}
+      onPlanNameChange={onPlanNameChange}
+      hasMeaningfulEdits={false}
+      onApplyTemplate={vi.fn()}
+      editor={<div>Editor</div>}
+      resultsContent={<div>Results</div>}
+    />
+  )
+}
+
 describe("PlannerWorkspace", () => {
   beforeEach(() => localStorage.clear())
 
@@ -59,6 +80,9 @@ describe("PlannerWorkspace", () => {
     expect(
       screen.getByRole("button", { name: "Rename plan: Branch office" })
     ).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: "Rename plan: Branch office" })
+    ).toHaveFocus()
   })
 
   it("commits a blank name on blur as Untitled plan", async () => {
@@ -76,6 +100,18 @@ describe("PlannerWorkspace", () => {
     expect(
       screen.getByRole("button", { name: "Rename plan: Untitled plan" })
     ).toBeInTheDocument()
+  })
+
+  it("keeps Tab focus on the next control after a blur commit", async () => {
+    const user = userEvent.setup()
+    render(<RenameHarness initialName="Branch office" />)
+
+    await user.click(
+      screen.getByRole("button", { name: "Rename plan: Branch office" })
+    )
+    await user.tab()
+
+    expect(screen.getByRole("button", { name: "Templates" })).toHaveFocus()
   })
 
   it("restores the original name when Escape cancels editing", async () => {
@@ -105,6 +141,9 @@ describe("PlannerWorkspace", () => {
     expect(
       screen.getByRole("button", { name: "Rename plan: Branch office" })
     ).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: "Rename plan: Branch office" })
+    ).toHaveFocus()
     expect(onPlanNameChange).not.toHaveBeenCalled()
   })
 
@@ -134,6 +173,35 @@ describe("PlannerWorkspace", () => {
 
     expect(onPlanNameChange).toHaveBeenCalledTimes(1)
     expect(onPlanNameChange).toHaveBeenCalledWith("Datacenter")
+  })
+
+  it("cancels an active edit when the controlled name changes externally", async () => {
+    const user = userEvent.setup()
+    const onPlanNameChange = vi.fn()
+    const { rerender } = render(
+      <ControlledRenameHarness
+        planName="Branch office"
+        onPlanNameChange={onPlanNameChange}
+      />
+    )
+
+    await user.click(
+      screen.getByRole("button", { name: "Rename plan: Branch office" })
+    )
+    await user.clear(screen.getByRole("textbox", { name: "Plan name" }))
+    await user.type(screen.getByRole("textbox", { name: "Plan name" }), "Stale draft")
+
+    rerender(
+      <ControlledRenameHarness
+        planName="Restored history plan"
+        onPlanNameChange={onPlanNameChange}
+      />
+    )
+
+    expect(
+      screen.getByRole("button", { name: "Rename plan: Restored history plan" })
+    ).toBeInTheDocument()
+    expect(onPlanNameChange).not.toHaveBeenCalled()
   })
 
   it("shows blocking diagnostics and capacity without hiding the editor", () => {
