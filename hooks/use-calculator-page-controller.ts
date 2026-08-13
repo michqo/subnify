@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 
 import { exportVlsmPdf } from "@/lib/calculator/export-pdf"
+import { recordCalculationEvent } from "@/lib/calculation-events"
 import type {
   VlsmCalculationResult,
   VlsmCalculationSuccess,
@@ -174,11 +175,16 @@ export function useCalculatorPageController({
       setCalculation(null)
       setCommittedPlanFingerprint(null)
       setSubmittedIssues(result.issues)
+      recordCalculationEvent({
+        event: "validation_failure",
+        issueCodes: [...new Set(result.issues.map((issue) => issue.code))],
+      })
       return
     }
     setSubmittedIssues([])
     setCalculation(result)
     setCommittedPlanFingerprint(currentPlanFingerprint)
+    recordCalculationEvent({ event: "success", issueCodes: [] })
 
     const shouldPersist = isCloudLinkedPlan || shouldSaveToCloud
     if (!shouldPersist) {
