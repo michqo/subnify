@@ -60,7 +60,7 @@ begin
       );
 
   return query
-    select v_limit, v_used, greatest(0, v_limit - v_used), v_window_hours;
+    select v_limit, least(v_used, v_limit), greatest(0, v_limit - v_used), v_window_hours;
 end
 $$;
 
@@ -111,7 +111,7 @@ begin
       and created_at >= now() - make_interval(hours => v_window_hours);
 
   if v_used >= v_limit then
-    return query select null::uuid, v_limit, v_used, 0, v_window_hours;
+    return query select null::uuid, v_limit, least(v_used, v_limit), 0, v_window_hours;
     return;
   end if;
 
@@ -120,7 +120,7 @@ begin
     returning id into v_id;
 
   return query
-    select v_id, v_limit, v_used + 1, greatest(0, v_limit - v_used - 1), v_window_hours;
+    select v_id, v_limit, least(v_used + 1, v_limit), greatest(0, v_limit - v_used - 1), v_window_hours;
 end
 $$;
 

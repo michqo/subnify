@@ -1,7 +1,7 @@
 "use client"
 
 import { Loader2, Sparkles } from "lucide-react"
-import { useState } from "react"
+import { useRef, useState } from "react"
 
 import { useAuth } from "@/components/core/auth-provider"
 import { Button } from "@/components/ui/button"
@@ -28,14 +28,27 @@ type GenerateRequirementsDialogProps = {
   onApply: (plan: ReplacePlanInput) => void
 }
 
+type GeneratedRequirements = {
+  plan: DesignerPlan
+  prompt: string
+}
+
 export function GenerateRequirementsDialog({ open, onOpenChange, onApply }: GenerateRequirementsDialogProps) {
   const { user } = useAuth()
   const userId = user?.id ?? null
   const { data: quota, isLoading: quotaLoading } = useAiDesignerQuotaQuery(userId)
   const generation = useGenerateAiDesignMutation(userId)
   const [prompt, setPrompt] = useState("")
-  const [plan, setPlan] = useState<DesignerPlan | null>(null)
+  const [generated, setGenerated] = useState<GeneratedRequirements | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const requestVersion = useRef(0)
+
+  const updatePrompt = (value: string) => {
+    requestVersion.current += 1
+    setPrompt(value)
+    setGenerated(null)
+    setError(null)
+  }
 
   const generate = async () => {
     const normalizedPrompt = prompt.trim()
@@ -51,12 +64,16 @@ export function GenerateRequirementsDialog({ open, onOpenChange, onApply }: Gene
       return
     }
 
+    const version = requestVersion.current + 1
+    requestVersion.current = version
     setError(null)
-    setPlan(null)
+    setGenerated(null)
     try {
       const payload = await generation.mutateAsync({ prompt: normalizedPrompt })
-      setPlan(payload.plan)
+      if (requestVersion.current !== version) return
+      setGenerated({ plan: payload.plan, prompt: normalizedPrompt })
     } catch (generationError) {
+      if (requestVersion.current !== version) return
       setError(
         generationError instanceof AiDesignerApiError || generationError instanceof Error
           ? generationError.message
@@ -66,15 +83,15 @@ export function GenerateRequirementsDialog({ open, onOpenChange, onApply }: Gene
   }
 
   const apply = () => {
-    if (!plan) return
-    const base = getAiPlanBase(plan)
+    if (!generated) return
+    const base = getAiPlanBase(generated.plan)
     onApply({
       ...base,
-      subnets: normalizeAiDesignedSubnets(plan.subnets),
+      subnets: normalizeAiDesignedSubnets(generated.plan.subnets),
       sourceType: "ai_design",
-      aiPrompt: prompt.trim(),
-      aiRationale: plan.rationale,
-      suggestedTitle: plan.title,
+      aiPrompt: generated.prompt,
+      aiRationale: generated.plan.rationale,
+      suggestedTitle: generated.plan.title,
     })
     onOpenChange(false)
   }
@@ -101,7 +118,7 @@ export function GenerateRequirementsDialog({ open, onOpenChange, onApply }: Gene
             <textarea
               id="requirements-prompt"
               value={prompt}
-              onChange={(event) => setPrompt(event.target.value)}
+              onChange={(event) => updatePrompt(event.target.value)}
               maxLength={MAX_AI_PROMPT_LENGTH}
               rows={5}
               placeholder="Three-floor office: 120 staff, guest Wi-Fi, VoIP, CCTV, isolated servers…"
@@ -121,12 +138,12 @@ export function GenerateRequirementsDialog({ open, onOpenChange, onApply }: Gene
           </Button>
           {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
 
-          {plan ? (
+          {generated ? (
             <div className="space-y-3 border-t border-border pt-4">
-              <div><p className="font-medium">{plan.title}</p><p className="mt-1 text-sm text-muted-foreground">{plan.rationale}</p></div>
-              <p className="font-mono text-xs text-primary">{plan.baseNetwork ?? "192.168.0.0"}/{plan.baseCidr ?? 24}</p>
+              <div><p className="font-medium">{generated.plan.title}</p><p className="mt-1 text-sm text-muted-foreground">{generated.plan.rationale}</p></div>
+              <p className="font-mono text-xs text-primary">{generated.plan.baseNetwork ?? "192.168.0.0"}/{generated.plan.baseCidr ?? 24}</p>
               <div className="divide-y divide-border border-y border-border">
-                {plan.subnets.map((subnet, index) => (
+                {generated.plan.subnets.map((subnet, index) => (
                   <div key={`${subnet.name}-${index}`} className="flex items-start justify-between gap-4 py-3">
                     <span><span className="block text-sm font-medium">{subnet.name}</span>{subnet.purpose ? <span className="block text-xs text-muted-foreground">{subnet.purpose}</span> : null}</span>
                     <span className="font-mono text-xs">{subnet.hosts} hosts</span>
@@ -134,7 +151,7 @@ export function GenerateRequirementsDialog({ open, onOpenChange, onApply }: Gene
                 ))}
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setPlan(null)}>Discard preview</Button>
+                <Button variant="outline" onClick={() => setGenerated(null)}>Discard preview</Button>
                 <Button onClick={apply}>Apply to planner</Button>
               </DialogFooter>
             </div>

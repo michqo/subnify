@@ -400,6 +400,43 @@ describe("ai designer route", () => {
     })
   })
 
+  it("accepts a DB-clamped quota snapshot after policy reduction", async () => {
+    adminRpc.mockResolvedValueOnce({
+      data: [{ limit: 3, used: 3, remaining: 0, window_hours: 24 }],
+      error: null,
+    })
+
+    const response = await GET()
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      quota: { limit: 3, used: 3, remaining: 0, windowHours: 24 },
+    })
+  })
+
+  it("returns 429 for a DB-clamped reservation after policy reduction", async () => {
+    adminRpc.mockResolvedValueOnce({
+      data: [
+        {
+          request_id: null,
+          limit: 3,
+          used: 3,
+          remaining: 0,
+          window_hours: 24,
+        },
+      ],
+      error: null,
+    })
+
+    const response = await POST(requestWithPrompt("office"))
+
+    expect(response.status).toBe(429)
+    expect(completion).not.toHaveBeenCalled()
+    await expect(response.json()).resolves.toMatchObject({
+      quota: { limit: 3, used: 3, remaining: 0, windowHours: 24 },
+    })
+  })
+
   it("rejects a malformed quota snapshot without returning raw detail", async () => {
     adminRpc.mockResolvedValueOnce({
       data: [{ limit: 3, used: 4, remaining: -1, window_hours: 24 }],
